@@ -6,6 +6,9 @@ export const calendarAccountsRouter = createTRPCRouter({
       where: {
         userId: ctx.session.user.id,
       },
+      include: {
+        calendars: true,
+      },
     });
   }),
 });

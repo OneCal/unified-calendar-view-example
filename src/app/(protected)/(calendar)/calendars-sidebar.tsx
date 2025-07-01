@@ -2,6 +2,11 @@ import { GoogleLogoIcon } from "@/components/icons/google-logo";
 import { MicrosoftLogoIcon } from "@/components/icons/microsoft-logo";
 import { ProviderLogoIcon } from "@/components/icons/provider-logo";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   DropdownMenuItem,
   DropdownMenu,
   DropdownMenuContent,
@@ -18,12 +23,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { getConnectCalendarUrl } from "@/lib/calendars";
 import type { api } from "@/trpc/server";
 import { CalendarAccountProvider } from "@prisma/client";
 
-import { PlusIcon } from "lucide-react";
+import { ChevronRightIcon, PlusIcon } from "lucide-react";
 
 export function CalendarsSidebar({
   calendarAccounts,
@@ -41,12 +48,40 @@ export function CalendarsSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               {calendarAccounts.map((calendarAccount) => (
-                <SidebarMenuItem key={calendarAccount.id}>
-                  <SidebarMenuButton>
-                    <ProviderLogoIcon provider={calendarAccount.provider} />
-                    <span className="font-medium">{calendarAccount.email}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <Collapsible
+                  key={calendarAccount.id}
+                  defaultOpen
+                  className="group/collapsible"
+                >
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton>
+                        <ProviderLogoIcon provider={calendarAccount.provider} />
+                        <span className="flex-shrink font-medium">
+                          {calendarAccount.email}
+                        </span>
+                        <ChevronRightIcon className="ml-auto flex-shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      {calendarAccount.calendars.map((calendar) => (
+                        <SidebarMenuSub key={calendar.id}>
+                          <SidebarMenuSubItem>
+                            <SidebarMenuButton>
+                              <div
+                                className="bg-secondary size-3 flex-shrink-0 rounded"
+                                style={{
+                                  backgroundColor: calendar.color ?? undefined,
+                                }}
+                              ></div>
+                              {calendar.name}
+                            </SidebarMenuButton>
+                          </SidebarMenuSubItem>
+                        </SidebarMenuSub>
+                      ))}
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>

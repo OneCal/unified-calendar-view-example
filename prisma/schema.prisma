@@ -60,7 +60,6 @@ model Calendar {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   name              String
-  description       String?
   color             String?
   timezone          String?
   isPrimary         Boolean  @default(false)

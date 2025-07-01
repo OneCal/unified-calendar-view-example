@@ -1,5 +1,9 @@
 import { env } from "@/env";
-import type { EndUserAccount } from "@/server/lib/onecal-unified/types";
+import type {
+  EndUserAccount,
+  PaginatedResponse,
+  UnifiedCalendar,
+} from "@/server/lib/onecal-unified/types";
 import ky from "ky";
 
 export const onecalUnifiedApi = ky.create({
@@ -13,5 +17,12 @@ export async function getEndUserAccountById(id: string) {
   const response = await onecalUnifiedApi.get<EndUserAccount>(
     `endUserAccounts/${id}`,
   );
+  return response.json();
+}
+
+export async function getCalendarsForEndUserAccount(endUserAccountId: string) {
+  const response = await onecalUnifiedApi.get<
+    PaginatedResponse<UnifiedCalendar>
+  >(`calendars/${endUserAccountId}`);
   return response.json();
 }

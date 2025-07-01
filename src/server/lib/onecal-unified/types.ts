@@ -1,3 +1,9 @@
+export type PaginatedResponse<T> = {
+  items: T[];
+  nextPageToken?: string;
+  nextSyncToken?: string;
+};
+
 export interface EndUserAccount {
   id: string;
   createdAt: string;
@@ -11,4 +17,18 @@ export interface EndUserAccount {
   applicationId: string;
   status: "ACTIVE" | "EXPIRED";
   providerType: "GOOGLE" | "MICROSOFT";
+}
+
+export interface UnifiedCalendar {
+  id: string;
+  name?: string;
+  hexColor?: string;
+  // colorId?: EventColorId;
+  readOnly?: boolean;
+  isPrimary?: boolean;
+  isShared?: boolean;
+  timeZone?: string;
+  inviteEmail?: string;
+  allowedOnlineMeetingProviders?: string[] | null;
+  defaultOnlineMeetingProvider?: string;
 }
