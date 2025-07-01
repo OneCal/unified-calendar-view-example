@@ -11,11 +11,13 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string()
         : z.string().optional(),
+    BETTER_AUTH_URL: z.string().url(),
     GOOGLE_CLIENT_ID: z.string(),
     GOOGLE_CLIENT_SECRET: z.string(),
     MICROSOFT_CLIENT_ID: z.string(),
     MICROSOFT_CLIENT_SECRET: z.string(),
     MICROSOFT_TENANT_ID: z.string(),
+    ONECAL_UNIFIED_API_KEY: z.string(),
     DATABASE_URL: z.string().url(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -29,6 +31,8 @@ export const env = createEnv({
    */
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    NEXT_PUBLIC_ONECAL_UNIFIED_URL: z.string().url(),
+    NEXT_PUBLIC_ONECAL_UNIFIED_APP_ID: z.string(),
   },
 
   /**
@@ -37,11 +41,16 @@ export const env = createEnv({
    */
   runtimeEnv: {
     AUTH_SECRET: process.env.AUTH_SECRET,
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID,
     MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET,
     MICROSOFT_TENANT_ID: process.env.MICROSOFT_TENANT_ID,
+    ONECAL_UNIFIED_API_KEY: process.env.ONECAL_UNIFIED_API_KEY,
+    NEXT_PUBLIC_ONECAL_UNIFIED_URL: process.env.NEXT_PUBLIC_ONECAL_UNIFIED_URL,
+    NEXT_PUBLIC_ONECAL_UNIFIED_APP_ID:
+      process.env.NEXT_PUBLIC_ONECAL_UNIFIED_APP_ID,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
   },

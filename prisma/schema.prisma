@@ -27,17 +27,71 @@ model Post {
   @@map("post")
 }
 
+model CalendarAccount {
+  id               String                  @id @default(cuid())
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  provider         CalendarAccountProvider
+  unifiedAccountId String
+  email            String
+
+  status    CalendarAccountStatus
+  calendars Calendar[]
+  userId    String
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([email, provider, userId])
+  @@index([userId])
+  @@map("calendar_account")
+}
+
+enum CalendarAccountProvider {
+  GOOGLE
+  MICROSOFT
+}
+
+enum CalendarAccountStatus {
+  ACTIVE
+  EXPIRED
+}
+
+model Calendar {
+  id                String   @id @default(cuid())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  name              String
+  description       String?
+  color             String?
+  timezone          String?
+  isPrimary         Boolean  @default(false)
+  isReadOnly        Boolean  @default(false)
+  unifiedCalendarId String
+
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarAccountId String
+  calendarAccount   CalendarAccount @relation(fields: [calendarAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([unifiedCalendarId, calendarAccountId])
+  @@index([calendarAccountId])
+  @@index([userId])
+  @@map("calendar")
+}
+
 model User {
-  id            String    @id @default(cuid())
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  name          String
-  email         String
-  emailVerified Boolean
-  image         String?
-  sessions      Session[]
-  accounts      Account[]
-  Post          Post[]
+  id                    String            @id @default(cuid())
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  name                  String
+  email                 String
+  emailVerified         Boolean
+  image                 String?
+  onboardingCompletedAt DateTime?
+  sessions              Session[]
+  accounts              Account[]
+  posts                 Post[]
+  calendarAccounts      CalendarAccount[]
+  calendars             Calendar[]
 
   @@unique([email])
   @@map("user")
