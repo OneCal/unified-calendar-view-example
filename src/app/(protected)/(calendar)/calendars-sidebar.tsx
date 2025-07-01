@@ -52,6 +52,8 @@ import { toast } from "sonner";
 export function CalendarsSidebar({ userId }: { userId: string }) {
   const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
   const { mutateAsync: setIsHidden } = api.calendars.setIsHidden.useMutation();
+  const { mutateAsync: deleteCalendarAccount } =
+    api.calendarAccounts.delete.useMutation();
 
   const handleSetIsHidden = async (calendarId: string, isHidden: boolean) => {
     try {
@@ -72,6 +74,22 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
     } catch (error) {
       console.error(error);
       toast.error("Failed to refresh connection");
+    }
+  };
+
+  const handleDeleteCalendarAccount = async (account: CalendarAccount) => {
+    try {
+      const result = confirm(
+        "Are you sure you want to disconnect this calendar account?",
+      );
+      if (!result) {
+        return;
+      }
+
+      await deleteCalendarAccount({ id: account.id });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete calendar account");
     }
   };
 
@@ -115,7 +133,11 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
                           <TriangleAlertIcon className="text-destructive ml-auto" />
                         )}
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          handleDeleteCalendarAccount(calendarAccount)
+                        }
+                      >
                         <TrashIcon />
                         Disconnect
                       </DropdownMenuItem>
