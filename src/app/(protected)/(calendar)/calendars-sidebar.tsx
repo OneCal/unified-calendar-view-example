@@ -51,7 +51,45 @@ import { toast } from "sonner";
 
 export function CalendarsSidebar({ userId }: { userId: string }) {
   const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
-  const { mutateAsync: setIsHidden } = api.calendars.setIsHidden.useMutation();
+  const utils = api.useUtils();
+
+  const { mutateAsync: setIsHidden } = api.calendars.setIsHidden.useMutation({
+    onMutate: async ({ calendarId, isHidden }) => {
+      // Cancel any outgoing refetches
+      await utils.calendarAccounts.getAll.cancel();
+
+      // Snapshot the previous value
+      const previousData = utils.calendarAccounts.getAll.getData();
+
+      // Optimistically update to the new value
+      utils.calendarAccounts.getAll.setData(undefined, (old) => {
+        if (!old) return old;
+
+        return old.map((account) => ({
+          ...account,
+          calendars: account.calendars.map((calendar) =>
+            calendar.id === calendarId ? { ...calendar, isHidden } : calendar,
+          ),
+        }));
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousData };
+    },
+    onError: (err, { calendarId, isHidden }, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousData) {
+        utils.calendarAccounts.getAll.setData(undefined, context.previousData);
+      }
+      console.error(err);
+      toast.error("Failed to set calendar visibility");
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure we have the latest data
+      utils.calendarAccounts.getAll.invalidate();
+    },
+  });
+
   const { mutateAsync: deleteCalendarAccount } =
     api.calendarAccounts.delete.useMutation();
 
