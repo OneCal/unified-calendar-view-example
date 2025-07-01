@@ -11,22 +11,25 @@ export async function GET(request: NextRequest) {
   const state = params.get("state");
 
   if (!endUserAccountId) {
-    return Response.json(
-      {
-        error: "endUserAccountId is required",
-      },
-      {
-        status: 400,
-      },
+    return Response.redirect(
+      `${env.BETTER_AUTH_URL}?error=MISSING_END_USER_ACCOUNT_ID`,
     );
   } else if (!state) {
-    return Response.json({
-      error: "externalId is required",
-    });
+    return Response.redirect(`${env.BETTER_AUTH_URL}?error=MISSING_STATE`);
   }
 
   const { userId } = stateFromB64(state);
   const endUserAccount = await getEndUserAccountById(endUserAccountId);
+
+  const user = await db.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+
+  if (!user) {
+    return Response.redirect(`${env.BETTER_AUTH_URL}?error=USER_NOT_FOUND`);
+  }
 
   await db.calendarAccount.upsert({
     where: {
@@ -48,6 +51,17 @@ export async function GET(request: NextRequest) {
       status: endUserAccount.status,
     },
   });
+
+  if (!user.onboardingCompletedAt) {
+    await db.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        onboardingCompletedAt: new Date(),
+      },
+    });
+  }
 
   return Response.redirect(`${env.BETTER_AUTH_URL}/`);
 }

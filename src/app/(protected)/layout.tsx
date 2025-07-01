@@ -1,7 +1,8 @@
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { getServerSession } from "@/server/auth";
 import { redirect } from "next/navigation";
 
-export default async function OnboardingLayout({
+export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -10,13 +11,7 @@ export default async function OnboardingLayout({
 
   if (!session?.user) {
     throw redirect("/login");
-  } else if (session.user.onboardingCompletedAt) {
-    throw redirect("/");
   }
 
-  return (
-    <div className="bg-muted flex h-screen flex-col items-center justify-center">
-      {children}
-    </div>
-  );
+  return <SidebarProvider>{children}</SidebarProvider>;
 }

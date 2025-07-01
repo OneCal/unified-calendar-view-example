@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { cache } from "react";
 
 export const auth = betterAuth({
@@ -36,6 +37,14 @@ export async function getServerSession() {
   return auth.api.getSession({
     headers: await headers(),
   });
+}
+
+export async function requireServerSession() {
+  const session = await getServerSession();
+  if (!session) {
+    redirect("/login");
+  }
+  return session;
 }
 
 export type Session = typeof auth.$Infer.Session;
