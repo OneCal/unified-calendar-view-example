@@ -3,6 +3,7 @@
 import { GoogleLogoIcon } from "@/components/icons/google-logo";
 import { MicrosoftLogoIcon } from "@/components/icons/microsoft-logo";
 import { ProviderLogoIcon } from "@/components/icons/provider-logo";
+import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -32,13 +33,23 @@ import { Switch } from "@/components/ui/switch";
 import { getConnectCalendarUrl } from "@/lib/calendars";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
-import { CalendarAccountProvider } from "@prisma/client";
+import {
+  CalendarAccountProvider,
+  CalendarAccountStatus,
+  type CalendarAccount,
+} from "@prisma/client";
 
-import { ChevronRightIcon, EyeOffIcon, PlusIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  EyeOffIcon,
+  PlusIcon,
+  RefreshCcwIcon,
+  TrashIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export function CalendarsSidebar({ userId }: { userId: string }) {
-  const utils = api.useUtils();
   const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
   const { mutateAsync: setIsHidden } = api.calendars.setIsHidden.useMutation();
 
@@ -51,6 +62,19 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
     }
   };
 
+  const handleRefreshConnection = async (account: CalendarAccount) => {
+    try {
+      window.location.href = getConnectCalendarUrl({
+        provider: account.provider,
+        userId,
+        loginHint: account.email,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to refresh connection");
+    }
+  };
+
   return (
     <Sidebar>
       <SidebarHeader />
@@ -60,51 +84,70 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
           <SidebarGroupContent>
             <SidebarMenu>
               {(calendarAccounts || []).map((calendarAccount) => (
-                <Collapsible
-                  key={calendarAccount.id}
-                  defaultOpen
-                  className="group/collapsible"
-                >
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
+                <SidebarMenuItem key={calendarAccount.id}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <SidebarMenuButton>
                         <ProviderLogoIcon provider={calendarAccount.provider} />
-                        <span className="flex-shrink font-medium">
+                        <span
+                          className={cn("flex-shrink font-medium", {
+                            "text-destructive":
+                              calendarAccount.status ===
+                              CalendarAccountStatus.EXPIRED,
+                          })}
+                        >
                           {calendarAccount.email}
                         </span>
-                        <ChevronRightIcon className="ml-auto flex-shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                        {calendarAccount.status ===
+                          CalendarAccountStatus.EXPIRED && (
+                          <TriangleAlertIcon className="text-destructive ml-auto" />
+                        )}
                       </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      {calendarAccount.calendars.map((calendar) => (
-                        <SidebarMenuSub key={calendar.id}>
-                          <SidebarMenuSubItem>
-                            <SidebarMenuButton
-                              className={cn({
-                                "opacity-50": calendar.isHidden,
-                              })}
-                              onClick={() => {
-                                handleSetIsHidden(
-                                  calendar.id,
-                                  !calendar.isHidden,
-                                );
-                              }}
-                            >
-                              <div
-                                className="bg-secondary size-3 flex-shrink-0 rounded"
-                                style={{
-                                  backgroundColor: calendar.color ?? undefined,
-                                }}
-                              ></div>
-                              {calendar.name}
-                              {calendar.isHidden && <EyeOffIcon />}
-                            </SidebarMenuButton>
-                          </SidebarMenuSubItem>
-                        </SidebarMenuSub>
-                      ))}
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-(--radix-popper-anchor-width)">
+                      <DropdownMenuItem
+                        onClick={() => handleRefreshConnection(calendarAccount)}
+                      >
+                        <RefreshCcwIcon />
+                        Refresh Connection
+                        {calendarAccount.status ===
+                          CalendarAccountStatus.EXPIRED && (
+                          <TriangleAlertIcon className="text-destructive ml-auto" />
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <TrashIcon />
+                        Disconnect
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {calendarAccount.calendars.map((calendar) => (
+                    <SidebarMenuSub key={calendar.id}>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuButton
+                          className={cn({
+                            "opacity-50": calendar.isHidden,
+                          })}
+                          onClick={() => {
+                            handleSetIsHidden(calendar.id, !calendar.isHidden);
+                          }}
+                        >
+                          <div
+                            className="bg-secondary size-3 flex-shrink-0 rounded"
+                            style={{
+                              backgroundColor: calendar.color ?? undefined,
+                            }}
+                          ></div>
+                          {calendar.name}
+                          {calendar.isHidden && (
+                            <EyeOffIcon className="ml-auto" />
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
+                  ))}
+                </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -124,10 +167,10 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
                   <DropdownMenuContent className="w-(--radix-popper-anchor-width)">
                     <DropdownMenuItem asChild>
                       <a
-                        href={getConnectCalendarUrl(
-                          CalendarAccountProvider.GOOGLE,
+                        href={getConnectCalendarUrl({
+                          provider: CalendarAccountProvider.GOOGLE,
                           userId,
-                        )}
+                        })}
                       >
                         <GoogleLogoIcon />
                         Google Calendar
@@ -135,10 +178,10 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <a
-                        href={getConnectCalendarUrl(
-                          CalendarAccountProvider.MICROSOFT,
+                        href={getConnectCalendarUrl({
+                          provider: CalendarAccountProvider.MICROSOFT,
                           userId,
-                        )}
+                        })}
                       >
                         <MicrosoftLogoIcon />
                         Microsoft Calendar

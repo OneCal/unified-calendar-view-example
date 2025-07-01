@@ -30,19 +30,19 @@ export default async function CalendarsPage() {
     {
       name: "Google Calendar",
       description: "Connect your Google Calendar.",
-      href: getConnectCalendarUrl(
-        CalendarAccountProvider.GOOGLE,
-        session.user.id,
-      ),
+      href: getConnectCalendarUrl({
+        provider: CalendarAccountProvider.GOOGLE,
+        userId: session.user.id,
+      }),
       icon: GoogleLogoIcon,
     },
     {
       name: "Microsoft Calendar",
       description: "Connect your Microsoft (Outlook) Calendar.",
-      href: getConnectCalendarUrl(
-        CalendarAccountProvider.MICROSOFT,
-        session.user.id,
-      ),
+      href: getConnectCalendarUrl({
+        provider: CalendarAccountProvider.MICROSOFT,
+        userId: session.user.id,
+      }),
       icon: MicrosoftLogoIcon,
     },
   ];
