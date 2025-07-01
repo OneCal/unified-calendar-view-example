@@ -1,3 +1,5 @@
+"use client";
+
 import { GoogleLogoIcon } from "@/components/icons/google-logo";
 import { MicrosoftLogoIcon } from "@/components/icons/microsoft-logo";
 import { ProviderLogoIcon } from "@/components/icons/provider-logo";
@@ -26,19 +28,29 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
+import { Switch } from "@/components/ui/switch";
 import { getConnectCalendarUrl } from "@/lib/calendars";
-import type { api } from "@/trpc/server";
+import { cn } from "@/lib/utils";
+import { api } from "@/trpc/react";
 import { CalendarAccountProvider } from "@prisma/client";
 
-import { ChevronRightIcon, PlusIcon } from "lucide-react";
+import { ChevronRightIcon, EyeOffIcon, PlusIcon } from "lucide-react";
+import { toast } from "sonner";
 
-export function CalendarsSidebar({
-  calendarAccounts,
-  userId,
-}: {
-  calendarAccounts: Awaited<ReturnType<typeof api.calendarAccounts.getAll>>;
-  userId: string;
-}) {
+export function CalendarsSidebar({ userId }: { userId: string }) {
+  const utils = api.useUtils();
+  const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
+  const { mutateAsync: setIsHidden } = api.calendars.setIsHidden.useMutation();
+
+  const handleSetIsHidden = async (calendarId: string, isHidden: boolean) => {
+    try {
+      await setIsHidden({ calendarId, isHidden });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to set calendar visibility");
+    }
+  };
+
   return (
     <Sidebar>
       <SidebarHeader />
@@ -47,7 +59,7 @@ export function CalendarsSidebar({
           <SidebarGroupLabel>Calendars</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {calendarAccounts.map((calendarAccount) => (
+              {(calendarAccounts || []).map((calendarAccount) => (
                 <Collapsible
                   key={calendarAccount.id}
                   defaultOpen
@@ -67,7 +79,17 @@ export function CalendarsSidebar({
                       {calendarAccount.calendars.map((calendar) => (
                         <SidebarMenuSub key={calendar.id}>
                           <SidebarMenuSubItem>
-                            <SidebarMenuButton>
+                            <SidebarMenuButton
+                              className={cn({
+                                "opacity-50": calendar.isHidden,
+                              })}
+                              onClick={() => {
+                                handleSetIsHidden(
+                                  calendar.id,
+                                  !calendar.isHidden,
+                                );
+                              }}
+                            >
                               <div
                                 className="bg-secondary size-3 flex-shrink-0 rounded"
                                 style={{
@@ -75,6 +97,7 @@ export function CalendarsSidebar({
                                 }}
                               ></div>
                               {calendar.name}
+                              {calendar.isHidden && <EyeOffIcon />}
                             </SidebarMenuButton>
                           </SidebarMenuSubItem>
                         </SidebarMenuSub>

@@ -64,6 +64,7 @@ model Calendar {
   timezone          String?
   isPrimary         Boolean  @default(false)
   isReadOnly        Boolean  @default(false)
+  isHidden          Boolean  @default(false)
   unifiedCalendarId String
 
   userId            String

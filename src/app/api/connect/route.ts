@@ -53,6 +53,9 @@ export async function GET(request: NextRequest) {
       unifiedAccountId: endUserAccount.id,
       status: endUserAccount.status,
     },
+    include: {
+      calendars: true,
+    },
   });
 
   if (!user.onboardingCompletedAt) {
@@ -93,6 +96,20 @@ export async function GET(request: NextRequest) {
       },
     });
   }
+
+  const calendarIdsToDelete = calendarAccount.calendars
+    .filter(
+      (calendar) =>
+        !calendars.items.some((c) => c.id === calendar.unifiedCalendarId),
+    )
+    .map((calendar) => calendar.id);
+
+  // Delete calendars that are no longer in this account
+  await db.calendar.deleteMany({
+    where: {
+      id: { in: calendarIdsToDelete },
+    },
+  });
 
   return Response.redirect(`${env.BETTER_AUTH_URL}/`);
 }
