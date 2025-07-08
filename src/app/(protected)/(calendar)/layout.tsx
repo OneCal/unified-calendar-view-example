@@ -15,7 +15,7 @@ export default async function ProtectedLayout({
   return (
     <HydrationBoundary>
       <CalendarsSidebar userId={session.user.id} />
-      <main>
+      <main className="flex min-h-screen w-full flex-col">
         <SidebarTrigger />
         {children}
       </main>
