@@ -1,9 +1,15 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { getCalendarEvents } from "@/server/lib/onecal-unified/client";
-import type { UnifiedEvent } from "@/server/lib/onecal-unified/types";
+import type {
+  PaginatedResponse,
+  UnifiedEvent,
+} from "@/server/lib/onecal-unified/types";
 import { formatICalDate, getRRuleObjectFromRRuleString } from "@/lib/utils";
 import { addMinutes, differenceInMinutes } from "date-fns";
+import { TRPCError } from "@trpc/server";
+import { HTTPError } from "ky";
+import { CalendarAccountStatus } from "@prisma/client";
 
 export const calendarEventsRouter = createTRPCRouter({
   getCalendarEvents: publicProcedure
@@ -12,6 +18,9 @@ export const calendarEventsRouter = createTRPCRouter({
       const visibleCalendars = await ctx.db.calendar.findMany({
         where: {
           isHidden: false,
+          calendarAccount: {
+            status: CalendarAccountStatus.ACTIVE,
+          },
         },
         include: {
           calendarAccount: true,
@@ -30,7 +39,27 @@ export const calendarEventsRouter = createTRPCRouter({
                 timeMin: input.startDate.toISOString(),
                 timeMax: input.endDate.toISOString(),
               },
-            );
+            ).catch(async (err) => {
+              if (err instanceof HTTPError) {
+                const errorJson = await err.response.json();
+                if (errorJson.error === "InvalidRefreshToken") {
+                  await ctx.db.calendarAccount.update({
+                    where: { id: calendar.calendarAccount.id },
+                    data: {
+                      status: CalendarAccountStatus.EXPIRED,
+                    },
+                  });
+                } else {
+                  console.error(
+                    `Failed to fetch calendar events for calendar ${calendar.id}. Message: ${errorJson.message}`,
+                  );
+                }
+              }
+
+              return {
+                items: [] as UnifiedEvent[],
+              } as PaginatedResponse<UnifiedEvent>;
+            });
 
             return events.items.map((event) => ({
               ...event,
