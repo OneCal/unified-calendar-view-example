@@ -7,7 +7,6 @@ import type {
 } from "@/server/lib/onecal-unified/types";
 import { formatICalDate, getRRuleObjectFromRRuleString } from "@/lib/utils";
 import { addMinutes, differenceInMinutes } from "date-fns";
-import { TRPCError } from "@trpc/server";
 import { HTTPError } from "ky";
 import { CalendarAccountStatus } from "@prisma/client";
 
@@ -27,9 +26,13 @@ export const calendarEventsRouter = createTRPCRouter({
         },
       });
 
-      let events: Array<UnifiedEvent & { calendarId: string }> = [];
+      let events: Array<
+        UnifiedEvent & { calendarId: string; calendarColor: string }
+      > = [];
 
-      const calendarEvents: Array<UnifiedEvent & { calendarId: string }> = (
+      const calendarEvents: Array<
+        UnifiedEvent & { calendarId: string; calendarColor: string }
+      > = (
         await Promise.all(
           visibleCalendars.map(async (calendar) => {
             const events = await getCalendarEvents(
@@ -64,6 +67,7 @@ export const calendarEventsRouter = createTRPCRouter({
             return events.items.map((event) => ({
               ...event,
               calendarId: calendar.id,
+              calendarColor: calendar.color, // Add calendar color for frontend use
             }));
           }),
         )
