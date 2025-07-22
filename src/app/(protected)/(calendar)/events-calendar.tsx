@@ -1,5 +1,9 @@
 "use client";
-import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import {
+  Calendar,
+  dateFnsLocalizer,
+  type Components,
+} from "react-big-calendar";
 import {
   format,
   parse,
@@ -13,7 +17,12 @@ import { enUS } from "date-fns/locale";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { api } from "@/trpc/react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import CalendarEventComponent from "@/app/(protected)/(calendar)/calendar-event";
+import {
+  EVENT_COLOR_MAP,
+  type CalendarEvent,
+} from "@/app/(protected)/(calendar)/types";
 
 const locales = {
   "en-US": enUS,
@@ -30,30 +39,8 @@ const initialRange = [startOfWeek(new Date()), endOfWeek(new Date())] as const;
 
 type DateRange = typeof initialRange;
 
-type CalendarEvent = {
-  title?: string;
-  start?: Date;
-  end?: Date;
-  allDay?: boolean;
-  colorId?: string;
-  customColor?: string;
-  calendarColor?: string;
-  resource?: { id: string };
-};
-
-const EVENT_COLOR_MAP: Record<string, string> = {
-  PALE_BLUE: "var(--color-sky-600)",
-  PALE_GREEN: "var(--color-emerald-600)",
-  MAUVE: "var(--color-fuchsia-600)",
-  PALE_RED: "var(--color-rose-600)",
-  YELLOW: "var(--color-yellow-600)",
-  ORANGE: "var(--color-orange-600)",
-  CYAN: "var(--color-cyan-600)",
-  GRAY: "var(--color-gray-600)",
-  BLUE: "var(--color-blue-600)",
-  GREEN: "var(--color-green-600)",
-  RED: "var(--color-red-600)",
-  CUSTOM: "var(--color-blue-600)", // fallback for custom
+const components: Components<CalendarEvent> = {
+  event: CalendarEventComponent,
 };
 
 export default function CalendarPage() {
@@ -85,14 +72,25 @@ export default function CalendarPage() {
     }));
   }, [calendarEvents]);
 
-  // Helper to get the event color
-  function getEventColor(event: CalendarEvent) {
-    if (event.customColor) return event.customColor;
-    if (event.colorId && EVENT_COLOR_MAP[event.colorId])
-      return EVENT_COLOR_MAP[event.colorId];
-    if (event.calendarColor) return event.calendarColor;
-    return undefined;
-  }
+  const eventPropGetter = useCallback((event: CalendarEvent) => {
+    const getEventColor = (event: CalendarEvent) => {
+      if (event.customColor) return event.customColor;
+      if (event.colorId && EVENT_COLOR_MAP[event.colorId])
+        return EVENT_COLOR_MAP[event.colorId];
+      if (event.calendarColor) return event.calendarColor;
+      return undefined;
+    };
+
+    const bg = getEventColor(event);
+    return bg
+      ? {
+          style: {
+            backgroundColor: bg,
+            borderColor: "white",
+          },
+        }
+      : {};
+  }, []);
 
   return (
     <Calendar
@@ -100,10 +98,8 @@ export default function CalendarPage() {
       localizer={localizer}
       events={events}
       defaultView="week"
-      eventPropGetter={(event: CalendarEvent) => {
-        const bg = getEventColor(event);
-        return bg ? { style: { backgroundColor: bg } } : {};
-      }}
+      eventPropGetter={eventPropGetter}
+      components={components}
       onRangeChange={(range) => {
         if (!Array.isArray(range) || range.length < 2) return;
         setDateRange([range[0]!, range[range.length - 1]!]);
