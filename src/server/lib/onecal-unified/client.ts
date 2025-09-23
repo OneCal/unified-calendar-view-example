@@ -32,9 +32,10 @@ interface GetCalendarEventsParams {
   pageToken?: string;
   pageSize?: number;
   syncToken?: string;
-  timeMin?: string;
-  timeMax?: string;
+  startDateTime?: string;
+  endDateTime?: string;
   timeZone?: string;
+  expandRecurrences?: boolean;
 }
 
 export async function getCalendarEvents(
@@ -47,5 +48,17 @@ export async function getCalendarEvents(
   const response = await onecalUnifiedApi.get<
     PaginatedResponse<UniversalEvent>
   >(`events/${endUserAccountId}/${calendarId}?${queryParams}`);
+  return response.json();
+}
+
+export async function createCalendarEvent(
+  endUserAccountId: string,
+  calendarId: string,
+  event: Partial<UniversalEvent>,
+) {
+  const response = await onecalUnifiedApi.post<UniversalEvent>(
+    `events/${endUserAccountId}/${calendarId}`,
+    event,
+  );
   return response.json();
 }

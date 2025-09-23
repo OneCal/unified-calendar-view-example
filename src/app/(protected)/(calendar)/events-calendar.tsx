@@ -18,7 +18,6 @@ import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { api } from "@/trpc/react";
 import { useCallback, useMemo, useState } from "react";
-import CalendarEventComponent from "@/app/(protected)/(calendar)/calendar-event";
 import {
   EVENT_COLOR_MAP,
   type CalendarEvent,
@@ -38,6 +37,10 @@ const localizer = dateFnsLocalizer({
 const initialRange = [startOfWeek(new Date()), endOfWeek(new Date())] as const;
 
 type DateRange = typeof initialRange;
+
+const CalendarEventComponent = ({ event }: { event: CalendarEvent }) => (
+  <span>{event.title}</span>
+);
 
 const components: Components<CalendarEvent> = {
   event: CalendarEventComponent,
@@ -101,8 +104,21 @@ export default function CalendarPage() {
       eventPropGetter={eventPropGetter}
       components={components}
       onRangeChange={(range) => {
-        if (!Array.isArray(range) || range.length < 2) return;
-        setDateRange([range[0]!, range[range.length - 1]!]);
+        // Week view: range is array of dates
+        if (Array.isArray(range) && range.length >= 2) {
+          setDateRange([range[0]!, range[range.length - 1]!]);
+          return;
+        }
+        // Month view: range is object with start/end
+        if (range && typeof range === "object" && "start" in range && "end" in range) {
+          setDateRange([range.start, range.end]);
+          return;
+        }
+        // Day view: range is a single Date
+        if (range instanceof Date) {
+          setDateRange([range, range]);
+          return;
+        }
       }}
     />
   );
