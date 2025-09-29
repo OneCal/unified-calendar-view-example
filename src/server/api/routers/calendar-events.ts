@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
-import { getCalendarEvents } from "@/server/lib/onecal-unified/client";
+import {
+  getCalendarEvents,
+  createCalendarEvent,
+  deleteCalendarEvent,
+} from "@/server/lib/onecal-unified/client";
 import type {
+  EventTransparency,
   PaginatedResponse,
   UnifiedEvent,
 } from "@/server/lib/onecal-unified/types";
@@ -31,7 +36,7 @@ export const calendarEventsRouter = createTRPCRouter({
       > = [];
 
       const calendarEvents: Array<
-        UnifiedEvent & { calendarId: string; calendarColor: string }
+        UnifiedEvent & { calendarId: string; calendarColor: string; calendarUnifiedId: string; calendarUnifiedAccountId: string; }
       > = (
         await Promise.all(
           visibleCalendars.map(async (calendar) => {
@@ -69,6 +74,8 @@ export const calendarEventsRouter = createTRPCRouter({
               ...event,
               calendarId: calendar.id,
               calendarColor: calendar.color, // Add calendar color for frontend use
+              calendarUnifiedId: calendar.unifiedCalendarId,
+              calendarUnifiedAccountId: calendar.calendarAccount.unifiedAccountId,
             }));
           }),
         )
@@ -79,9 +86,71 @@ export const calendarEventsRouter = createTRPCRouter({
 
       for (const event of calendarEvents) {
         if (event.isCancelled) continue;
-          events.push(event);
+        events.push(event);
       }
 
       return events;
     }),
+  createCalendarEvent: publicProcedure
+    .input(
+      z.object({
+        endUserAccountId: z.string(),
+        calendarId: z.string(),
+        title: z.string(),
+        start: z.object({
+          dateTime: z.string(),
+          timeZone: z.string(),
+        }),
+        end: z.object({
+          dateTime: z.string(),
+          timeZone: z.string(),
+        }),
+        attendees: z
+          .array(
+            z.object({
+              email: z.string(),
+              name: z.string().optional(),
+            }),
+          )
+          .optional(),
+        organizer: z
+          .object({
+            email: z.string(),
+            name: z.string().optional(),
+          })
+          .optional(),
+        description: z.string().optional(),
+        showAs: z.string().optional(),
+        isAllDay: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      await createCalendarEvent(input.endUserAccountId, input.calendarId, {
+        title: input.title,
+        start: input.start,
+        end: input.end,
+        attendees: input.attendees,
+        organizer: input.organizer,
+        description: input.description,
+        transparency: input.showAs as EventTransparency,
+        isAllDay: input.isAllDay,
+      });
+      return { success: true };
+    }),
+  deleteCalendarEvent: publicProcedure
+    .input(
+      z.object({
+        endUserAccountId: z.string(),
+        calendarId: z.string(),
+        eventId: z.string(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      await deleteCalendarEvent(
+        input.endUserAccountId,
+        input.calendarId,
+        input.eventId,
+      );
+      return { success: true };
+    }), 
 });

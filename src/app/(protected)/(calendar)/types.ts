@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 export type CalendarEvent = {
+  id?: string;
   title?: string | ReactNode | null;
   start?: Date;
   end?: Date;
@@ -8,6 +9,9 @@ export type CalendarEvent = {
   colorId?: string;
   customColor?: string;
   calendarColor?: string;
+  calendarUnifiedAccountId?: string;
+  calendarUnifiedId?: string;
+  calendarId?: string;
   resource?: { id: string };
 };
 
