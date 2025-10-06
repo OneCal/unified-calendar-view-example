@@ -16,6 +16,8 @@ import { api } from "@/trpc/react";
 import { formatOneCalDate } from "@/lib/utils";
 import * as Yup from "yup";
 import { Trash2Icon } from "lucide-react";
+import { RecurrencePopover, recurrenceText } from "./recurrence-popover";
+import { addHours } from "date-fns";
 
 export type CreateEventFormProps = {
   calendars: Array<{
@@ -49,22 +51,43 @@ const validationSchema = Yup.object({
       name: Yup.string().required("Name is required"),
     }),
   ),
+  isRecurring: Yup.boolean(),
+  recurrence: Yup.array()
+    .of(Yup.string())
+    .when("isRecurring", {
+      is: true,
+      then: (schema) => schema.min(1, "Recurrence rule is required"),
+      otherwise: (schema) => schema,
+    }),
 });
 
-export function CreateEventForm({ calendars, initialStart, initialEnd, onSuccess }: CreateEventFormProps) {
+export function CreateEventForm({
+  calendars,
+  initialStart,
+  initialEnd,
+  onSuccess,
+}: CreateEventFormProps) {
   const [error, setError] = useState("");
+  const [recurrencePopoverOpen, setRecurrencePopoverOpen] = useState(false);
+
   const createEventMutation =
     api.calendarEvents.createCalendarEvent.useMutation();
 
   const initialValues = {
     title: "",
     calendarId: calendars[0]?.id ?? "",
-    start: initialStart ? initialStart.toISOString().slice(0, 16) : "",
-    end: initialStart ? initialEnd?.toISOString().slice(0, 16) : "",
+    start: initialStart
+      ? initialStart.toISOString().slice(0, 16)
+      : new Date().toISOString().slice(0, 16),
+    end: initialStart
+      ? initialEnd?.toISOString().slice(0, 16)
+      : addHours(new Date(), 1).toISOString().slice(0, 16),
     isAllDay: false,
     description: "",
     showAs: "transparent",
     attendees: [] as Array<{ email: string; name: string }>,
+    isRecurring: false,
+    recurrence: [] as string[],
   };
 
   const handleSubmit = (
@@ -97,6 +120,8 @@ export function CreateEventForm({ calendars, initialStart, initialEnd, onSuccess
         description: values.description,
         showAs: values.showAs,
         isAllDay: values.isAllDay,
+        isRecurring: values.isRecurring,
+        recurrence: values.recurrence,
       })
       .then(() => {
         toast.success("Event created successfully");
@@ -129,6 +154,7 @@ export function CreateEventForm({ calendars, initialStart, initialEnd, onSuccess
             );
           }
         }, [values.calendarId, setFieldValue, values.attendees]);
+
         return (
           <Form className="flex flex-col gap-2 p-4">
             <Field as={Input} name="title" placeholder="Event Title" />
@@ -172,6 +198,43 @@ export function CreateEventForm({ calendars, initialStart, initialEnd, onSuccess
               <Field type="checkbox" name="isAllDay" />
               <span>All day</span>
             </div>
+
+            <div className="mt-2 flex items-center gap-2">
+              <Field
+                type="checkbox"
+                name="isRecurring"
+                id="isRecurring"
+                className="cursor-pointer"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setFieldValue("isRecurring", e.target.checked);
+
+                  if (e.target.checked) {
+                    setRecurrencePopoverOpen(true);
+                  }
+                }}
+              />
+              <label htmlFor="isRecurring" className="cursor-pointer">
+                Make recurring
+              </label>
+
+              {values.isRecurring && (
+                <RecurrencePopover
+                  startDate={values.start}
+                  open={recurrencePopoverOpen}
+                  onOpenChange={setRecurrencePopoverOpen}
+                  onSave={(rruleString) => {
+                    setFieldValue("recurrence", [rruleString]);
+                    setFieldValue("isRecurring", true);
+                  }}
+                />
+              )}
+            </div>
+
+            {values.isRecurring && values.recurrence.length > 0 && (
+              <p className="mt-1 text-sm text-gray-600">
+                Occurs {recurrenceText(values.recurrence[0] || "")}
+              </p>
+            )}
 
             <div className="flex items-start gap-2">
               <div className="relative flex flex-1 flex-col">

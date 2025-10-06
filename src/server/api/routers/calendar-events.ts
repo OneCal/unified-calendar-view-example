@@ -75,7 +75,8 @@ export const calendarEventsRouter = createTRPCRouter({
               calendarId: calendar.id,
               calendarColor: calendar.color, // Add calendar color for frontend use
               calendarUnifiedId: calendar.unifiedCalendarId,
-              calendarUnifiedAccountId: calendar.calendarAccount.unifiedAccountId,
+              calendarUnifiedAccountId:
+                calendar.calendarAccount.unifiedAccountId,
             }));
           }),
         )
@@ -122,6 +123,8 @@ export const calendarEventsRouter = createTRPCRouter({
         description: z.string().optional(),
         showAs: z.string().optional(),
         isAllDay: z.boolean().optional(),
+        isRecurring: z.boolean().optional(),
+        recurrence: z.array(z.string()).optional().nullable(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -134,6 +137,8 @@ export const calendarEventsRouter = createTRPCRouter({
         description: input.description,
         transparency: input.showAs as EventTransparency,
         isAllDay: input.isAllDay,
+        isRecurring: input.isRecurring,
+        recurrence: input.recurrence
       });
       return { success: true };
     }),
@@ -152,5 +157,5 @@ export const calendarEventsRouter = createTRPCRouter({
         input.eventId,
       );
       return { success: true };
-    }), 
+    }),
 });

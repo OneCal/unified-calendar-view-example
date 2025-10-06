@@ -9,8 +9,8 @@ import {
   parse,
   startOfWeek,
   getDay,
-  addDays,
   endOfWeek,
+  addHours,
 } from "date-fns";
 import { enUS, sl } from "date-fns/locale";
 
@@ -55,8 +55,9 @@ const components: Components<CalendarEvent> = {
 export default function CalendarPage() {
   const [dateRange, setDateRange] = useState<DateRange>(initialRange);
   const [createEventOpen, setCreateEventOpen] = useState(false);
-  const [createEventStart, setCreateEventStart] = useState<Date | null>(null);
-  const [createEventsEnd, setCreateEventEnd] = useState<Date | null>(null);
+  const [createEventStart, setCreateEventStart] = useState<Date | null>(new Date());
+  const [createEventEnd, setCreateEventEnd] = useState<Date | null>(addHours(new Date(), 1));
+
   const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
 
   const { data: calendarEvents } =
@@ -131,7 +132,7 @@ export default function CalendarPage() {
               })),
             )}
             initialStart={createEventStart}
-            initialEnd={createEventsEnd}
+            initialEnd={createEventEnd}
             onSuccess={() => setCreateEventOpen(false)}
           />
           <SheetClose />
