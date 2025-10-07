@@ -13,10 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
-import { formatOneCalDate } from "@/lib/utils";
+import { formatLocalDate, formatOneCalDate, getRRuleText } from "@/lib/utils";
 import * as Yup from "yup";
 import { Trash2Icon } from "lucide-react";
-import { RecurrencePopover, recurrenceText } from "./recurrence-popover";
+import { RecurrencePopover } from "./recurrence-popover";
 import { addHours } from "date-fns";
 
 export type CreateEventFormProps = {
@@ -76,12 +76,8 @@ export function CreateEventForm({
   const initialValues = {
     title: "",
     calendarId: calendars[0]?.id ?? "",
-    start: initialStart
-      ? initialStart.toISOString().slice(0, 16)
-      : new Date().toISOString().slice(0, 16),
-    end: initialStart
-      ? initialEnd?.toISOString().slice(0, 16)
-      : addHours(new Date(), 1).toISOString().slice(0, 16),
+    start: formatLocalDate(initialStart ?? new Date()),
+    end: formatLocalDate(initialEnd ?? addHours(new Date(), 1)),
     isAllDay: false,
     description: "",
     showAs: "transparent",
@@ -232,7 +228,7 @@ export function CreateEventForm({
 
             {values.isRecurring && values.recurrence.length > 0 && (
               <p className="mt-1 text-sm text-gray-600">
-                Occurs {recurrenceText(values.recurrence[0] || "")}
+                Occurs {getRRuleText(values.recurrence[0] || "")}
               </p>
             )}
 

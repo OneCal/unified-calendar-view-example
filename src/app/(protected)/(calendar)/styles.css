@@ -7,7 +7,7 @@
 
   --rbc-border-color: #ccc;
 
-  // Each calendar segment is 1/7th.
+  /* Each calendar segment is 1/7th. */
   --rbc-segment-width: 0.14286%;
 
   --rbc-time-selection-color: white;

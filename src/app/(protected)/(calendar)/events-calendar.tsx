@@ -49,14 +49,21 @@ const initialRange = [startOfWeek(new Date()), endOfWeek(new Date())] as const;
 type DateRange = typeof initialRange;
 
 const components: Components<CalendarEvent> = {
-  event: CalendarEventComponent,
+  event: (props) => <div>{props.event.title}</div>,
 };
 
 export default function CalendarPage() {
   const [dateRange, setDateRange] = useState<DateRange>(initialRange);
   const [createEventOpen, setCreateEventOpen] = useState(false);
-  const [createEventStart, setCreateEventStart] = useState<Date | null>(new Date());
-  const [createEventEnd, setCreateEventEnd] = useState<Date | null>(addHours(new Date(), 1));
+  const [createEventStart, setCreateEventStart] = useState<Date | null>(
+    new Date(),
+  );
+  const [createEventEnd, setCreateEventEnd] = useState<Date | null>(
+    addHours(new Date(), 1),
+  );
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
+    null,
+  );
 
   const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
 
@@ -73,6 +80,7 @@ export default function CalendarPage() {
 
   const events: CalendarEvent[] = useMemo(() => {
     if (!calendarEvents) return [];
+    debugger;
     return calendarEvents.map((event: any) => ({
       id: event.id,
       title: event.title,
@@ -150,6 +158,9 @@ export default function CalendarPage() {
           setCreateEventEnd(slotInfo.end);
           setCreateEventOpen(true);
         }}
+        onSelectEvent={(event) => {
+          setSelectedEvent(event);
+        }}
         selectable
         onRangeChange={(range) => {
           // Week view: range is array of dates
@@ -174,6 +185,12 @@ export default function CalendarPage() {
           }
         }}
       />
+      {selectedEvent && (
+        <CalendarEventComponent
+          event={selectedEvent}
+          setEvent={setSelectedEvent}
+        />
+      )}
     </>
   );
 }

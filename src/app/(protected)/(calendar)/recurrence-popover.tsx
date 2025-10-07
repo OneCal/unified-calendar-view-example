@@ -9,15 +9,6 @@ import { RRule, Weekday, Frequency, rrulestr } from "rrule";
 import { RefreshCcwIcon } from "lucide-react";
 import { format } from "date-fns";
 
-export function recurrenceText(rruleString: string): string {
-  try {
-    const rule = rrulestr(rruleString);
-    return rule.toText();
-  } catch {
-    return "Custom recurrence rule";
-  }
-}
-
 export type RecurrencePopoverProps = {
   startDate: string;
   onSave: (rruleString: string) => void;

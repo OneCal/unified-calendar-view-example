@@ -1,87 +1,97 @@
+"use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogClose,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import type { CalendarEvent } from "./types";
+import { ClockIcon, EditIcon, Trash2Icon } from "lucide-react";
+import { formatDateRange, formatDateTimeRange } from "@/lib/utils";
 
-export function CalendarEventComponent({ event }: { event: CalendarEvent }) {
-  const [open, setOpen] = useState(false);
-  const [hovering, setHovering] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const deleteEventMutation = api.calendarEvents.deleteCalendarEvent.useMutation();
+export function CalendarEventComponent({ event, setEvent }: { event: CalendarEvent | null, setEvent: (event: CalendarEvent | null) => void }) {
+  if (!event) return null;
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const deleteMutation = api.calendarEvents.deleteCalendarEvent.useMutation();
+
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync({
+        endUserAccountId: event.calendarUnifiedAccountId!,
+        calendarId: event.calendarUnifiedId!,
+        eventId: event.id!,
+      });
+      toast.success("Event deleted successfully");
+      setDeleteOpen(false);
+      setEvent(null);
+    } catch {
+      toast.error("Failed to delete event");
+    }
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <span
-          onMouseEnter={() => {
-            setOpen(true);
-            setHovering(true);
-          }}
-          onMouseLeave={() => setHovering(false)}
-          style={{ cursor: "pointer" }}
-        >
-          {event.title}
-        </span>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        side="right"
-        className={`min-w-[220px] ${!open ? 'hidden' : ''}`}
-        onMouseEnter={() => setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
-      >
-        <div className="flex flex-col gap-2">
-          <div className="text-base font-semibold">{event.title}</div>
-          {event.start && (
-            <div>
-              <span className="font-medium">Start:</span> {event.start.toLocaleString()}
+    <>
+      <Dialog open={Boolean(event)} onOpenChange={() => setEvent(null)}>
+        <DialogContent className="flex min-w-[300px] flex-col gap-4 p-4">
+          <DialogTitle className="text-lg font-semibold">
+            {event.title}
+          </DialogTitle>
+
+          {event.start && event.end && (
+            <div className="flex items-center gap-1">
+              <ClockIcon />
+              {event.allDay
+                ? formatDateRange(event.start, event.end)
+                : formatDateTimeRange(event.start, event.end)}
             </div>
           )}
-          {event.end && (
-            <div>
-              <span className="font-medium">End:</span> {event.end.toLocaleString()}
-            </div>
+          {event.allDay && (
+            <div className="text-sm text-gray-600">All Day Event</div>
           )}
-          {event.allDay && <div>All Day Event</div>}
-          <Button variant="destructive" size="sm" onClick={() => setConfirmOpen(true)}>
+
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="default">
+              <EditIcon />
+              Edit
+            </Button>
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2Icon />
+              Delete
+            </Button>
+
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="flex min-w-[300px] flex-col gap-4 p-4">
+          <DialogTitle className="text-lg font-semibold">
             Delete Event
-          </Button>
-          {confirmOpen && (
-            <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40">
-              <div className="bg-white rounded shadow-lg p-6 min-w-[300px] relative z-[1001]">
-                <div className="font-semibold text-lg mb-2">Delete Event</div>
-                <div className="mb-4">Are you sure you want to delete this event?</div>
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setConfirmOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={async () => {
-                      try {
-                        await deleteEventMutation.mutateAsync({
-                          endUserAccountId: event.calendarUnifiedAccountId!,
-                          calendarId: event.calendarUnifiedId!,
-                          eventId: event.id!,
-                        });
-                        toast.success("Event deleted successfully");
-                        setConfirmOpen(false);
-                        setOpen(false);
-                      } catch (err) {
-                        toast.error("Failed to delete event");
-                      }
-                    }}
-                    disabled={deleteEventMutation.isPending}
-                  >
-                    {deleteEventMutation.isPending ? "Deleting..." : "Delete"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+          </DialogTitle>
+          <p>Are you sure you want to delete this event?</p>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
