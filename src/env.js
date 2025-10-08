@@ -46,7 +46,7 @@ export const env = createEnv({
     NEXT_PUBLIC_ONECAL_UNIFIED_APP_ID:
       process.env.NEXT_PUBLIC_ONECAL_UNIFIED_APP_ID,
 
-    AUTH_SECRET: process.env.AUTH_SECRET,
+    AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,

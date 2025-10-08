@@ -9,20 +9,29 @@ import {
   parse,
   startOfWeek,
   getDay,
-  addDays,
   endOfWeek,
+  addHours,
 } from "date-fns";
-import { enUS } from "date-fns/locale";
+import { enUS, sl } from "date-fns/locale";
 
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { api } from "@/trpc/react";
 import { useCallback, useMemo, useState } from "react";
-import CalendarEventComponent from "@/app/(protected)/(calendar)/calendar-event";
 import {
   EVENT_COLOR_MAP,
   type CalendarEvent,
 } from "@/app/(protected)/(calendar)/types";
+import { CalendarEventComponent } from "./calendar-event";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet";
+import { CreateEventForm } from "./create-event-form";
 
 const locales = {
   "en-US": enUS,
@@ -40,11 +49,24 @@ const initialRange = [startOfWeek(new Date()), endOfWeek(new Date())] as const;
 type DateRange = typeof initialRange;
 
 const components: Components<CalendarEvent> = {
-  event: CalendarEventComponent,
+  event: (props) => <div>{props.event.title}</div>,
 };
 
 export default function CalendarPage() {
   const [dateRange, setDateRange] = useState<DateRange>(initialRange);
+  const [createEventOpen, setCreateEventOpen] = useState(false);
+  const [createEventStart, setCreateEventStart] = useState<Date | null>(
+    new Date(),
+  );
+  const [createEventEnd, setCreateEventEnd] = useState<Date | null>(
+    addHours(new Date(), 1),
+  );
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
+    null,
+  );
+
+  const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
+
   const { data: calendarEvents } =
     api.calendarEvents.getCalendarEvents.useQuery(
       {
@@ -58,7 +80,9 @@ export default function CalendarPage() {
 
   const events: CalendarEvent[] = useMemo(() => {
     if (!calendarEvents) return [];
-    return calendarEvents.map((event) => ({
+    debugger;
+    return calendarEvents.map((event: any) => ({
+      id: event.id,
       title: event.title,
       start: event.start?.dateTime ? new Date(event.start.dateTime) : undefined,
       end: event.end?.dateTime ? new Date(event.end.dateTime) : undefined,
@@ -66,6 +90,9 @@ export default function CalendarPage() {
       colorId: event.colorId,
       customColor: event.customColor,
       calendarColor: event.calendarColor,
+      calendarId: event.calendarId,
+      calendarUnifiedAccountId: event.calendarUnifiedAccountId,
+      calendarUnifiedId: event.calendarUnifiedId,
       resource: {
         id: event.calendarId,
       },
@@ -93,17 +120,77 @@ export default function CalendarPage() {
   }, []);
 
   return (
-    <Calendar
-      culture="en-US"
-      localizer={localizer}
-      events={events}
-      defaultView="week"
-      eventPropGetter={eventPropGetter}
-      components={components}
-      onRangeChange={(range) => {
-        if (!Array.isArray(range) || range.length < 2) return;
-        setDateRange([range[0]!, range[range.length - 1]!]);
-      }}
-    />
+    <>
+      <Sheet open={createEventOpen} onOpenChange={setCreateEventOpen}>
+        <SheetContent
+          side="right"
+          className="fixed top-0 right-0 h-full w-full overflow-y-auto sm:w-[600px] sm:max-w-3xl"
+        >
+          <SheetHeader>
+            <SheetTitle>Create Event</SheetTitle>
+          </SheetHeader>
+          <CreateEventForm
+            calendars={(calendarAccounts || []).flatMap((acc) =>
+              acc.calendars.map((cal) => ({
+                ...cal,
+                calendarAccount: {
+                  unifiedAccountId: acc.unifiedAccountId,
+                  email: acc.email,
+                },
+              })),
+            )}
+            initialStart={createEventStart}
+            initialEnd={createEventEnd}
+            onSuccess={() => setCreateEventOpen(false)}
+          />
+          <SheetClose />
+        </SheetContent>
+      </Sheet>
+      <Calendar
+        culture="en-US"
+        localizer={localizer}
+        events={events}
+        defaultView="week"
+        eventPropGetter={eventPropGetter}
+        components={components}
+        onSelectSlot={(slotInfo) => {
+          setCreateEventStart(slotInfo.start);
+          setCreateEventEnd(slotInfo.end);
+          setCreateEventOpen(true);
+        }}
+        onSelectEvent={(event) => {
+          setSelectedEvent(event);
+        }}
+        selectable
+        onRangeChange={(range) => {
+          // Week view: range is array of dates
+          if (Array.isArray(range) && range.length >= 2) {
+            setDateRange([range[0]!, range[range.length - 1]!]);
+            return;
+          }
+          // Month view: range is object with start/end
+          if (
+            range &&
+            typeof range === "object" &&
+            "start" in range &&
+            "end" in range
+          ) {
+            setDateRange([range.start, range.end]);
+            return;
+          }
+          // Day view: range is a single Date
+          if (range instanceof Date) {
+            setDateRange([range, range]);
+            return;
+          }
+        }}
+      />
+      {selectedEvent && (
+        <CalendarEventComponent
+          event={selectedEvent}
+          setEvent={setSelectedEvent}
+        />
+      )}
+    </>
   );
 }

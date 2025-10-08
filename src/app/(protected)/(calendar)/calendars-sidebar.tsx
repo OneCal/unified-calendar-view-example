@@ -48,6 +48,16 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet";
+import { CreateEventForm } from "@/app/(protected)/(calendar)/create-event-form";
 
 export function CalendarsSidebar({ userId }: { userId: string }) {
   const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
@@ -249,6 +259,32 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <SidebarMenuButton className="w-full">
+                      <PlusIcon />
+                      Create event
+                    </SidebarMenuButton>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="fixed right-0 top-0 h-full w-full sm:w-[600px] sm:max-w-3xl overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Create New Event</SheetTitle>
+                    </SheetHeader>
+                    <CreateEventForm
+                      calendars={(calendarAccounts || []).flatMap((acc) =>
+                        acc.calendars.map((cal) => ({
+                          ...cal,
+                          calendarAccount: {
+                            unifiedAccountId: acc.unifiedAccountId,
+                            email: acc.email
+                          },
+                        })),
+                      )}
+                    />
+                  </SheetContent>
+                </Sheet>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

@@ -3,7 +3,7 @@ import type {
   EndUserAccount,
   PaginatedResponse,
   UnifiedCalendar,
-  UniversalEvent,
+  UnifiedEvent as UniversalEvent,
 } from "@/server/lib/onecal-unified/types";
 import ky from "ky";
 
@@ -32,9 +32,10 @@ interface GetCalendarEventsParams {
   pageToken?: string;
   pageSize?: number;
   syncToken?: string;
-  timeMin?: string;
-  timeMax?: string;
+  startDateTime?: string;
+  endDateTime?: string;
   timeZone?: string;
+  expandRecurrences?: boolean;
 }
 
 export async function getCalendarEvents(
@@ -48,4 +49,27 @@ export async function getCalendarEvents(
     PaginatedResponse<UniversalEvent>
   >(`events/${endUserAccountId}/${calendarId}?${queryParams}`);
   return response.json();
+}
+
+export async function createCalendarEvent(
+  endUserAccountId: string,
+  calendarId: string,
+  event: Partial<UniversalEvent>,
+) {
+  console.log("Creating event:", event, endUserAccountId, calendarId);
+  const response = await onecalUnifiedApi.post<UniversalEvent>(
+    `events/${endUserAccountId}/${calendarId}`,
+    {json: event},
+  );
+  return response.json();
+}
+
+export async function deleteCalendarEvent(
+  endUserAccountId: string,
+  calendarId: string,
+  eventId: string,
+) {
+  await onecalUnifiedApi.delete(
+    `events/${endUserAccountId}/${calendarId}/${eventId}`,
+  );
 }

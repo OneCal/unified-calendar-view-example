@@ -1,12 +1,15 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
-import { getCalendarEvents } from "@/server/lib/onecal-unified/client";
+import {
+  getCalendarEvents,
+  createCalendarEvent,
+  deleteCalendarEvent,
+} from "@/server/lib/onecal-unified/client";
 import type {
+  EventTransparency,
   PaginatedResponse,
   UnifiedEvent,
 } from "@/server/lib/onecal-unified/types";
-import { formatICalDate, getRRuleObjectFromRRuleString } from "@/lib/utils";
-import { addMinutes, differenceInMinutes } from "date-fns";
 import { HTTPError } from "ky";
 import { CalendarAccountStatus } from "@prisma/client";
 
@@ -31,7 +34,7 @@ export const calendarEventsRouter = createTRPCRouter({
       > = [];
 
       const calendarEvents: Array<
-        UnifiedEvent & { calendarId: string; calendarColor: string }
+        UnifiedEvent & { calendarId: string; calendarColor: string; calendarUnifiedId: string; calendarUnifiedAccountId: string; }
       > = (
         await Promise.all(
           visibleCalendars.map(async (calendar) => {
@@ -39,8 +42,9 @@ export const calendarEventsRouter = createTRPCRouter({
               calendar.calendarAccount.unifiedAccountId,
               calendar.unifiedCalendarId,
               {
-                timeMin: input.startDate.toISOString(),
-                timeMax: input.endDate.toISOString(),
+                startDateTime: input.startDate.toISOString(),
+                endDateTime: input.endDate.toISOString(),
+                expandRecurrences: true,
               },
             ).catch(async (err) => {
               if (err instanceof HTTPError) {
@@ -68,6 +72,9 @@ export const calendarEventsRouter = createTRPCRouter({
               ...event,
               calendarId: calendar.id,
               calendarColor: calendar.color, // Add calendar color for frontend use
+              calendarUnifiedId: calendar.unifiedCalendarId,
+              calendarUnifiedAccountId:
+                calendar.calendarAccount.unifiedAccountId,
             }));
           }),
         )
@@ -78,62 +85,75 @@ export const calendarEventsRouter = createTRPCRouter({
 
       for (const event of calendarEvents) {
         if (event.isCancelled) continue;
-
-        if (event.isRecurring && event.recurrence) {
-          const rruleString = event.recurrence.find((r) =>
-            r.startsWith("RRULE:"),
-          );
-          if (
-            !rruleString ||
-            !event.start?.dateTime ||
-            !event.start?.timeZone ||
-            !event.end?.dateTime
-          ) {
-            continue;
-          }
-
-          const exDates = calendarEvents
-            .filter(
-              (e) =>
-                (e.isException || e.isCancelled) &&
-                e.recurringEventId === event.id,
-            )
-            .map((e) => e.originalStart?.dateTime as string);
-
-          // expand the recurrence into a list of occurrences
-          const rrule = getRRuleObjectFromRRuleString(
-            event.start?.dateTime,
-            event.start?.timeZone,
-            rruleString,
-            exDates,
-          );
-
-          const occurrences = rrule.between(
-            input.startDate,
-            input.endDate,
-            true,
-          );
-
-          const duration = differenceInMinutes(
-            event.end?.dateTime,
-            event.start?.dateTime,
-          );
-          const occurrencesEvents = occurrences.map((occurrence) => ({
-            ...event,
-            id: `${event.id}_${formatICalDate(occurrence.toISOString(), event.start?.timeZone ?? "UTC")}`,
-            start: { ...event.start, dateTime: occurrence.toISOString() },
-            end: {
-              ...event.end,
-              dateTime: addMinutes(occurrence, duration).toISOString(),
-            },
-          }));
-
-          events.push(...occurrencesEvents);
-        } else {
-          events.push(event);
-        }
+        events.push(event);
       }
 
       return events;
+    }),
+  createCalendarEvent: publicProcedure
+    .input(
+      z.object({
+        endUserAccountId: z.string(),
+        calendarId: z.string(),
+        title: z.string(),
+        start: z.object({
+          dateTime: z.string(),
+          timeZone: z.string(),
+        }),
+        end: z.object({
+          dateTime: z.string(),
+          timeZone: z.string(),
+        }),
+        attendees: z
+          .array(
+            z.object({
+              email: z.string(),
+              name: z.string().optional(),
+            }),
+          )
+          .optional(),
+        organizer: z
+          .object({
+            email: z.string(),
+            name: z.string().optional(),
+          })
+          .optional(),
+        description: z.string().optional(),
+        showAs: z.string().optional(),
+        isAllDay: z.boolean().optional(),
+        isRecurring: z.boolean().optional(),
+        recurrence: z.array(z.string()).optional().nullable(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      await createCalendarEvent(input.endUserAccountId, input.calendarId, {
+        title: input.title,
+        start: input.start,
+        end: input.end,
+        attendees: input.attendees,
+        organizer: input.organizer,
+        description: input.description,
+        transparency: input.showAs as EventTransparency,
+        isAllDay: input.isAllDay,
+        isRecurring: input.isRecurring,
+        recurrence: input.recurrence
+      });
+      return { success: true };
+    }),
+  deleteCalendarEvent: publicProcedure
+    .input(
+      z.object({
+        endUserAccountId: z.string(),
+        calendarId: z.string(),
+        eventId: z.string(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      await deleteCalendarEvent(
+        input.endUserAccountId,
+        input.calendarId,
+        input.eventId,
+      );
+      return { success: true };
     }),
 });

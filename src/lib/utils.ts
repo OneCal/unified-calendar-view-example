@@ -2,6 +2,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { formatInTimeZone } from "date-fns-tz";
 import { RRule, rrulestr } from "rrule";
+import { format, isSameDay } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -25,6 +26,32 @@ export const formatICalDate = (date: string, timeZone: string) => {
   return formatInTimeZone(d, timeZone, "yyyyMMdd'T'HHmmss");
 };
 
+export const formatOneCalDate = (date: string, timeZone: string) => {
+  const d = new Date(date);
+
+  return formatInTimeZone(d, timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+};
+
+export const formatLocalDate = (date: Date) => {
+  return format(date, "yyyy-MM-dd'T'HH:mm");
+};
+
+export const formatDateTimeRange = (start: Date, end: Date): string => {
+  if (isSameDay(start, end)) {
+    return `${format(start, "EEE, MMM d, yyyy h:mm a")} - ${format(end, "h:mm a")}`;
+  } else {
+    return `${format(start, "EEE, MMM d, yyyy h:mm a")} - ${format(end, "EEE, MMM d, yyyy h:mm a")}`;
+  }
+};
+
+export const formatDateRange = (start: Date, end: Date): string => {
+  if (isSameDay(start, end)) {
+    return `${format(start, "EEE, MMM d, yyyy")}`;
+  } else {
+    return `${format(start, "EEE, MMM d, yyyy")} - ${format(end, "EEE, MMM d, yyyy")}`;
+  }
+};
+
 export const getRRuleObjectFromRRuleString = (
   startDateTime: string,
   timeZone: string,
@@ -43,4 +70,13 @@ export const getRRuleObjectFromRRuleString = (
   }
 
   return rrulestr(fullRRuleStr);
+};
+
+export const getRRuleText = (rruleString: string): string => {
+  try {
+    const rule = rrulestr(rruleString);
+    return rule.toText();
+  } catch {
+    return "Custom recurrence rule";
+  }
 };
