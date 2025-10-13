@@ -5,12 +5,14 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { RRule, Weekday, Frequency, rrulestr } from "rrule";
+import { RRule, Weekday, Frequency, RRuleSet } from "rrule";
 import { RefreshCcwIcon } from "lucide-react";
 import { format } from "date-fns";
+import { get } from "http";
+import { fr } from "date-fns/locale";
 
 export type RecurrencePopoverProps = {
-  startDate: string;
+  startDate?: string;
   onSave: (rruleString: string) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -22,19 +24,6 @@ export function RecurrencePopover({
   open: controlledOpen,
   onOpenChange,
 }: RecurrencePopoverProps) {
-  const [freq, setFreq] = useState(Frequency.WEEKLY);
-  const [interval, setInterval] = useState(1);
-  const [selectedDays, setSelectedDays] = useState<string[]>(["MO"]);
-  const [internalOpen, setInternalOpen] = useState(false);
-  const [from, setFrom] = useState<Date>(new Date(startDate));
-  const [until, setUntil] = useState<Date | null>(new Date());
-  const [monthOption, setMonthOption] = useState<"dayOfMonth" | "nthWeekday">(
-    "dayOfMonth",
-  );
-
-  const isOpen = controlledOpen ?? internalOpen;
-  const setIsOpen = onOpenChange ?? setInternalOpen;
-
   const dayMap: Record<string, Weekday> = {
     MO: new Weekday(0),
     TU: new Weekday(1),
@@ -45,6 +34,29 @@ export function RecurrencePopover({
     SU: new Weekday(6),
   };
 
+  const getInitialSelectedDays = (): string[] => {
+    const start = startDate ? new Date(startDate) : new Date();
+    const weekdayNames = Object.keys(dayMap);
+    return [weekdayNames[start.getDay() - 1] ?? "MO"];
+  };
+
+  const [freq, setFreq] = useState(Frequency.WEEKLY);
+  const [interval, setInterval] = useState(1);
+  const [selectedDays, setSelectedDays] = useState<string[]>(
+    getInitialSelectedDays(),
+  );
+  const [internalOpen, setInternalOpen] = useState(false);
+  const [from, setFrom] = useState<Date>(
+    startDate ? new Date(startDate) : new Date(),
+  );
+  const [until, setUntil] = useState<Date | null>(new Date());
+  const [monthOption, setMonthOption] = useState<"dayOfMonth" | "nthWeekday">(
+    "dayOfMonth",
+  );
+
+  const isOpen = controlledOpen ?? internalOpen;
+  const setIsOpen = onOpenChange ?? setInternalOpen;
+
   const handleDayToggle = (day: string) => {
     setSelectedDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
@@ -52,31 +64,30 @@ export function RecurrencePopover({
   };
 
   useEffect(() => {
-    const start = new Date(startDate);
-    const suggested = new Date(start);
+    const suggested = new Date(from);
 
     switch (freq) {
       case Frequency.DAILY:
-        suggested.setDate(start.getDate() + interval);
+        suggested.setDate(from.getDate() + interval);
         break;
       case Frequency.WEEKLY:
-        suggested.setDate(start.getDate() + interval * 7);
+        suggested.setDate(from.getDate() + interval * 7);
         break;
       case Frequency.MONTHLY:
-        suggested.setMonth(start.getMonth() + interval);
+        suggested.setMonth(from.getMonth() + interval);
         break;
       case Frequency.YEARLY:
-        suggested.setFullYear(start.getFullYear() + interval);
+        suggested.setFullYear(from.getFullYear() + interval);
         break;
       default:
-        suggested.setHours(start.getHours() + 1);
+        suggested.setHours(from.getHours() + 1);
     }
 
     setUntil(suggested);
   }, [freq, interval, startDate]);
 
   useEffect(() => {
-    setFrom(new Date(startDate));
+    setFrom(startDate ? new Date(startDate) : new Date());
   }, [startDate]);
 
   const nthWeekLabels: Record<string, string> = {
@@ -115,6 +126,18 @@ export function RecurrencePopover({
       }
     }
     return new RRule(rRuleOptions);
+
+    // const ruleSet = new RRuleSet();
+    // ruleSet.rrule(new RRule(rRuleOptions));
+
+    // if (freq === Frequency.WEEKLY && selectedDays.length > 0) {
+    //   debugger;
+    //   const weekdayNames = Object.keys(dayMap);
+    //   const startDay = weekdayNames[from.getDay()];
+    //   if (startDay && !selectedDays.includes(startDay)) {
+    //     ruleSet.exdate(from);
+    //   }
+    // }
   };
 
   const handleSave = () => {

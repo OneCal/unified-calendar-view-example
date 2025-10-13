@@ -3,12 +3,6 @@
 import { GoogleLogoIcon } from "@/components/icons/google-logo";
 import { MicrosoftLogoIcon } from "@/components/icons/microsoft-logo";
 import { ProviderLogoIcon } from "@/components/icons/provider-logo";
-import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   DropdownMenuItem,
   DropdownMenu,
@@ -57,7 +51,7 @@ import {
   SheetTitle,
   SheetClose,
 } from "@/components/ui/sheet";
-import { CreateEventForm } from "@/app/(protected)/(calendar)/create-event-form";
+import { EventForm } from "@/app/(protected)/(calendar)/event-form";
 
 export function CalendarsSidebar({ userId }: { userId: string }) {
   const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
@@ -272,7 +266,7 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
                     <SheetHeader>
                       <SheetTitle>Create New Event</SheetTitle>
                     </SheetHeader>
-                    <CreateEventForm
+                    <EventForm
                       calendars={(calendarAccounts || []).flatMap((acc) =>
                         acc.calendars.map((cal) => ({
                           ...cal,
