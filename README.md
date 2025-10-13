@@ -78,6 +78,10 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
+### 4. Register the redirect uri
+
+Register the local application endpoint [http://localhost:3000/api/connect](http://localhost:3000/api/connect) as an Authorized Redirect URI in the [OneCal Unified Dashboard](https://app.onecalunified.com/) under the Configuration menu. 
+
 ### 5. Start the development server
 
 Start the application locally by running `pnpm dev`.
