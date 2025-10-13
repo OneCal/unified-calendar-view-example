@@ -64,11 +64,11 @@ export const calendarEventsRouter = createTRPCRouter({
               }
 
               return {
-                items: [] as UnifiedEvent[],
+                data: [] as UnifiedEvent[],
               } as PaginatedResponse<UnifiedEvent>;
             });
 
-            return events.items.map((event) => ({
+            return events.data.map((event) => ({
               ...event,
               calendarId: calendar.id,
               calendarColor: calendar.color, // Add calendar color for frontend use

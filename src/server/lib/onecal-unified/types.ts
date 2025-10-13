@@ -1,5 +1,5 @@
 export type PaginatedResponse<T> = {
-  items: T[];
+  data: T[];
   nextPageToken?: string;
   nextSyncToken?: string;
 };

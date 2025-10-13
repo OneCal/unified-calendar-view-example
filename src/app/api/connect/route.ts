@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
   const calendars = await getCalendarsForEndUserAccount(endUserAccount.id);
 
-  for (const calendar of calendars.items) {
+  for (const calendar of calendars.data) {
     await db.calendar.upsert({
       where: {
         unifiedCalendarId_calendarAccountId: {
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
   const calendarIdsToDelete = calendarAccount.calendars
     .filter(
       (calendar) =>
-        !calendars.items.some((c) => c.id === calendar.unifiedCalendarId),
+        !calendars.data.some((c) => c.id === calendar.unifiedCalendarId),
     )
     .map((calendar) => calendar.id);
 
