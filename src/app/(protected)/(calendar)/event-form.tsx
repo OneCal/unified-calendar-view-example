@@ -34,6 +34,7 @@ export type EventFormProps = {
   calendarId?: string;
   endUserAccountId?: string;
   eventId?: string;
+  updateSeries?: boolean;
   onSuccess?: () => void;
 };
 
@@ -73,19 +74,19 @@ export function EventForm({
   calendarId,
   endUserAccountId,
   eventId,
+  updateSeries,
   onSuccess,
 }: EventFormProps) {
   const [error, setError] = useState("");
   const [recurrencePopoverOpen, setRecurrencePopoverOpen] = useState(false);
   const [showUpdateSeriesDialog, setShowUpdateSeriesDialog] = useState(false);
-  const [updateSeries, setUpdateSeries] = useState(false);
 
   const createEventMutation =
     api.calendarEvents.createCalendarEvent.useMutation();
   const updateEventMutation =
     api.calendarEvents.editCalendarEvent.useMutation();
 
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const defaultTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const {
     data: eventData,
@@ -97,6 +98,25 @@ export function EventForm({
       : (undefined as any),
     {
       enabled: !!eventId && !!endUserAccountId && !!calendarId,
+      retry: false,
+    },
+  );
+
+  const {
+    data: masterEventData,
+    isLoading: isMasterLoading,
+    isError: isMasterError,
+  } = api.calendarEvents.getCalendarEvent.useQuery(
+    eventData?.recurringEventId && endUserAccountId && calendarId
+      ? {
+          eventId: eventData.recurringEventId,
+          endUserAccountId,
+          calendarId,
+        }
+      : (undefined as any),
+    {
+      enabled:
+        !!eventData?.recurringEventId && !!endUserAccountId && !!calendarId,
       retry: false,
     },
   );
@@ -115,27 +135,33 @@ export function EventForm({
         isRecurring: false,
         recurrence: [] as string[],
       };
+    const recurrence =
+      masterEventData?.recurrence ?? eventData.recurrence ?? [];
+
+    const startDateTime = updateSeries
+      ? masterEventData?.start?.dateTime
+      : eventData?.start?.dateTime;
+    const endDateTime = updateSeries
+      ? masterEventData?.end?.dateTime
+      : eventData?.end?.dateTime;
+
     return {
       title: eventData.title ?? "",
       calendarId: calendarId ?? "",
       start: formatLocalDate(
-        eventData.start?.dateTime
-          ? new Date(eventData.start.dateTime)
-          : new Date(),
+        startDateTime ? new Date(startDateTime) : new Date(),
       ),
       end: formatLocalDate(
-        eventData.end?.dateTime
-          ? new Date(eventData.end.dateTime)
-          : addHours(new Date(), 1),
+        endDateTime ? new Date(endDateTime) : addHours(new Date(), 1),
       ),
       isAllDay: eventData.isAllDay ?? false,
       description: eventData.description ?? "",
       transparency: eventData.transparency ?? "transparent",
       attendees: eventData.attendees ?? [],
-      isRecurring: eventData.isRecurring ?? false,
-      recurrence: eventData.recurrence ?? [],
+      isRecurring: eventData.recurringEventId ? true : false,
+      recurrence,
     };
-  }, [eventData]);
+  }, [eventData, masterEventData]);
 
   const handleSubmit = async (
     values: any,
@@ -150,20 +176,26 @@ export function EventForm({
       endUserAccountId ??
       "";
 
+    const startTimezone = eventData?.start?.timeZone ?? defaultTimeZone;
+
     const start = {
-      dateTime: formatOneCalDate(values.start, timeZone),
-      timeZone,
+      dateTime: formatOneCalDate(values.start, startTimezone),
+      timeZone: startTimezone,
     };
-    const end = { dateTime: formatOneCalDate(values.end, timeZone), timeZone };
+
+    const endTimeZone = eventData?.end?.timeZone ?? defaultTimeZone;
+    const end = {
+      dateTime: formatOneCalDate(values.end, endTimeZone),
+      timeZone: endTimeZone,
+    };
 
     try {
       if (eventId && endUserAccountId && calendarId) {
-        if (eventData?.recurringEventId) {
-          setShowUpdateSeriesDialog(true);
-          return;
-        }
         await updateEventMutation.mutateAsync({
-          id: eventId,
+          id:
+            updateSeries && masterEventData && masterEventData.id
+              ? masterEventData.id
+              : eventId,
           endUserAccountId: endUserAccountId,
           calendarId: calendarId,
           title: values.title,
@@ -175,8 +207,10 @@ export function EventForm({
           description: values.description,
           showAs: values.showAs,
           isAllDay: values.isAllDay,
-          isRecurring: values.isRecurring,
-          recurrence: values.recurrence,
+          isRecurring: updateSeries
+            ? values.isRecurring
+            : eventData?.isRecurring,
+          recurrence: updateSeries ? values.recurrence : eventData?.recurrence,
         });
         toast.success("Event updated successfully");
       } else {
@@ -206,7 +240,7 @@ export function EventForm({
     }
   };
 
-  if (eventId && isLoading) {
+  if (eventId && (isLoading || isMasterLoading)) {
     return (
       <div className="flex items-center gap-1 p-4 text-sm text-gray-500">
         <LoaderIcon /> Loading event...
@@ -214,7 +248,7 @@ export function EventForm({
     );
   }
 
-  if (eventId && isError) {
+  if (eventId && (isError || isMasterError)) {
     return (
       <div className="p-4 text-sm text-red-500">Failed to load event.</div>
     );
@@ -246,6 +280,15 @@ export function EventForm({
               );
             }
           }, [values.calendarId, setFieldValue]);
+          useEffect(() => {
+            if (
+              masterEventData?.recurrence?.length &&
+              (!values.recurrence?.length ||
+                values.recurrence[0] !== masterEventData.recurrence[0])
+            ) {
+              setFieldValue("recurrence", masterEventData.recurrence);
+            }
+          }, [masterEventData, setFieldValue]);
 
           return (
             <Form className="flex flex-col gap-2 p-4">
@@ -285,46 +328,50 @@ export function EventForm({
                 </div>
               )}
 
-              <div className="flex items-center gap-2">
-                <Field type="checkbox" name="isAllDay" />
-                <span>All day</span>
-              </div>
+              {(!eventId || updateSeries) && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Field type="checkbox" name="isAllDay" />
+                    <span>All day</span>
+                  </div>
 
-              <div className="mt-2 flex items-center gap-2">
-                <Field
-                  type="checkbox"
-                  name="isRecurring"
-                  id="isRecurring"
-                  className="cursor-pointer"
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    setFieldValue("isRecurring", e.target.checked);
-                    if (e.target.checked) setRecurrencePopoverOpen(true);
-                  }}
-                />
-                <label htmlFor="isRecurring" className="cursor-pointer">
-                  Make recurring
-                </label>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Field
+                      type="checkbox"
+                      name="isRecurring"
+                      id="isRecurring"
+                      className="cursor-pointer"
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        setFieldValue("isRecurring", e.target.checked);
+                        if (e.target.checked) setRecurrencePopoverOpen(true);
+                      }}
+                    />
+                    <label htmlFor="isRecurring" className="cursor-pointer">
+                      Make recurring
+                    </label>
 
-                {values.isRecurring && (
-                  <RecurrencePopover
-                    startDate={values.start}
-                    open={recurrencePopoverOpen}
-                    onOpenChange={setRecurrencePopoverOpen}
-                    onSave={(rruleString) => {
-                      setFieldValue("recurrence", [rruleString]);
-                      setFieldValue("isRecurring", true);
-                    }}
-                  />
-                )}
-              </div>
+                    {values.isRecurring && (
+                      <RecurrencePopover
+                        startDate={values.start}
+                        open={recurrencePopoverOpen}
+                        onOpenChange={setRecurrencePopoverOpen}
+                        onSave={(rruleString) => {
+                          setFieldValue("recurrence", [rruleString]);
+                          setFieldValue("isRecurring", true);
+                        }}
+                      />
+                    )}
+                  </div>
 
-              {values.isRecurring &&
-                values.recurrence &&
-                values.recurrence.length > 0 && (
-                  <p className="mt-1 text-sm text-gray-600">
-                    Occurs {getRRuleText(values.recurrence[0] || "")}
-                  </p>
-                )}
+                  {values.isRecurring &&
+                    values.recurrence &&
+                    values.recurrence?.length > 0 && (
+                      <p className="mt-1 text-sm text-gray-600">
+                        Occurs {getRRuleText(values.recurrence[0] || "")}
+                      </p>
+                    )}
+                </>
+              )}
 
               <div className="flex items-start gap-2">
                 <div className="relative flex flex-1 flex-col">
@@ -462,20 +509,6 @@ export function EventForm({
           );
         }}
       </Formik>
-      {showUpdateSeriesDialog && (
-        <RecurringEventDialog
-          title="Update Recurring Event"
-          open={showUpdateSeriesDialog}
-          updateSeries={updateSeries}
-          onUpdateSeriesChange={setUpdateSeries}
-          onSubmit={async () => {
-            setShowUpdateSeriesDialog(false);
-            // now call your handleSubmit logic and pass `updateSeries`
-            // await submitEvent(values, updateSeries);
-          }}
-          onClose={() => setShowUpdateSeriesDialog(false)}
-        />
-      )}
     </>
   );
 }

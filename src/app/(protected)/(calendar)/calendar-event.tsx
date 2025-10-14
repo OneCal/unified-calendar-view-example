@@ -34,7 +34,9 @@ export function CalendarEventComponent({
   const [showDialog, setShowDialog] = useState(Boolean(event));
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editEventOpen, setEditEventOpen] = useState(false);
+  const [deleteSeries, setDeleteSeries] = useState(false);
   const [updateSeries, setUpdateSeries] = useState(false);
+  const [showDeleteSeriesDialog, setShowDeleteSeriesDialog] = useState(false);
   const [showUpdateSeriesDialog, setShowUpdateSeriesDialog] = useState(false);
 
   const deleteMutation = api.calendarEvents.deleteCalendarEvent.useMutation();
@@ -83,7 +85,11 @@ export function CalendarEventComponent({
               variant="default"
               onClick={() => {
                 setShowDialog(false);
-                setEditEventOpen(true);
+                if (event.recurringEventId) {
+                  setShowUpdateSeriesDialog(true);
+                } else {
+                  setEditEventOpen(true);
+                }
               }}
             >
               <EditIcon />
@@ -93,7 +99,7 @@ export function CalendarEventComponent({
               variant="destructive"
               onClick={() => {
                 if (event.recurringEventId) {
-                  setShowUpdateSeriesDialog(true);
+                  setShowDeleteSeriesDialog(true);
                 } else {
                   setDeleteOpen(true);
                 }
@@ -123,6 +129,7 @@ export function CalendarEventComponent({
             endUserAccountId={event.calendarUnifiedAccountId!}
             calendarId={event.calendarUnifiedId!}
             eventId={event.id!}
+            updateSeries={updateSeries}
             onSuccess={() => setEditEventOpen(false)}
           />
           <SheetClose />
@@ -150,18 +157,32 @@ export function CalendarEventComponent({
         </DialogContent>
       </Dialog>
 
-      {showUpdateSeriesDialog && (
+      {showDeleteSeriesDialog && (
         <RecurringEventDialog
           title="Delete Recurring Event"
+          open={showDeleteSeriesDialog}
+          updateSeries={deleteSeries}
+          onUpdateSeriesChange={setDeleteSeries}
+          onSubmit={async () => {
+            setShowDeleteSeriesDialog(false);
+            setShowDialog(false);
+            await handleDelete(
+              deleteSeries ? event.recurringEventId : event.id,
+            );
+          }}
+          onClose={() => setShowDeleteSeriesDialog(false)}
+        />
+      )}
+
+      {showUpdateSeriesDialog && (
+        <RecurringEventDialog
+          title="Edit Recurring Event"
           open={showUpdateSeriesDialog}
           updateSeries={updateSeries}
           onUpdateSeriesChange={setUpdateSeries}
           onSubmit={async () => {
             setShowUpdateSeriesDialog(false);
-            setShowDialog(false);
-            await handleDelete(
-              updateSeries ? event.recurringEventId : event.id,
-            );
+            setEditEventOpen(true);
           }}
           onClose={() => setShowUpdateSeriesDialog(false)}
         />
