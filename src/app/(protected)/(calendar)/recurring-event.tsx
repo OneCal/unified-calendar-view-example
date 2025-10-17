@@ -52,7 +52,7 @@ export function RecurringEventDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onSubmit}>Update</Button>
+          <Button onClick={onSubmit}>Ok</Button>
         </div>
       </DialogContent>
     </Dialog>

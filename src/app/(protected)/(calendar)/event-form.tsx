@@ -18,7 +18,6 @@ import * as Yup from "yup";
 import { LoaderIcon, Trash2Icon } from "lucide-react";
 import { RecurrencePopover } from "./recurrence-popover";
 import { addHours } from "date-fns";
-import { RecurringEventDialog } from "@/app/(protected)/(calendar)/recurring-event";
 import type { CalendarEvent } from "@/app/(protected)/(calendar)/types";
 
 export type EventFormProps = {
@@ -54,7 +53,7 @@ const validationSchema = Yup.object({
   attendees: Yup.array().of(
     Yup.object({
       email: Yup.string().email("Invalid email").required("Email is required"),
-      name: Yup.string().required("Name is required"),
+      name: Yup.string(),
     }),
   ),
   isRecurring: Yup.boolean(),
@@ -79,7 +78,6 @@ export function EventForm({
 }: EventFormProps) {
   const [error, setError] = useState("");
   const [recurrencePopoverOpen, setRecurrencePopoverOpen] = useState(false);
-  const [showUpdateSeriesDialog, setShowUpdateSeriesDialog] = useState(false);
 
   const createEventMutation =
     api.calendarEvents.createCalendarEvent.useMutation();
@@ -122,7 +120,10 @@ export function EventForm({
   );
 
   const initialValues: CalendarEvent = useMemo(() => {
-    if (!eventData)
+    const baseEvent =
+      updateSeries && masterEventData ? masterEventData : eventData;
+
+    if (!baseEvent)
       return {
         title: "",
         calendarId: calendarId ?? calendars[0]?.id ?? "",
@@ -135,31 +136,34 @@ export function EventForm({
         isRecurring: false,
         recurrence: [] as string[],
       };
-    const recurrence =
-      masterEventData?.recurrence ?? eventData.recurrence ?? [];
-
-    const startDateTime = updateSeries
-      ? masterEventData?.start?.dateTime
-      : eventData?.start?.dateTime;
-    const endDateTime = updateSeries
-      ? masterEventData?.end?.dateTime
-      : eventData?.end?.dateTime;
 
     return {
-      title: eventData.title ?? "",
+      id: baseEvent?.id ?? "",
+      title: baseEvent.title ?? "",
       calendarId: calendarId ?? "",
       start: formatLocalDate(
-        startDateTime ? new Date(startDateTime) : new Date(),
+        baseEvent?.start?.dateTime
+          ? new Date(baseEvent.start.dateTime)
+          : new Date(),
       ),
       end: formatLocalDate(
-        endDateTime ? new Date(endDateTime) : addHours(new Date(), 1),
+        baseEvent?.end?.dateTime
+          ? new Date(baseEvent.end.dateTime)
+          : addHours(new Date(), 1),
       ),
-      isAllDay: eventData.isAllDay ?? false,
-      description: eventData.description ?? "",
-      transparency: eventData.transparency ?? "transparent",
-      attendees: eventData.attendees ?? [],
-      isRecurring: eventData.recurringEventId ? true : false,
-      recurrence,
+      isAllDay: baseEvent.isAllDay ?? false,
+      description: baseEvent.description ?? "",
+      transparency: baseEvent.transparency ?? "transparent",
+      attendees: baseEvent.organizer
+        ? [
+            baseEvent.organizer,
+            ...(baseEvent.attendees?.filter(
+              (a) => a.email !== baseEvent.organizer?.email,
+            ) ?? []),
+          ]
+        : (baseEvent.attendees ?? []),
+      isRecurring: baseEvent.isRecurring,
+      recurrence: baseEvent.recurrence ?? [],
     };
   }, [eventData, masterEventData]);
 
@@ -176,14 +180,15 @@ export function EventForm({
       endUserAccountId ??
       "";
 
-    const startTimezone = eventData?.start?.timeZone ?? defaultTimeZone;
+    const baseEvent = masterEventData ?? eventData;
+    const startTimezone = baseEvent?.start?.timeZone ?? defaultTimeZone;
 
     const start = {
       dateTime: formatOneCalDate(values.start, startTimezone),
       timeZone: startTimezone,
     };
 
-    const endTimeZone = eventData?.end?.timeZone ?? defaultTimeZone;
+    const endTimeZone = baseEvent?.end?.timeZone ?? defaultTimeZone;
     const end = {
       dateTime: formatOneCalDate(values.end, endTimeZone),
       timeZone: endTimeZone,
@@ -192,10 +197,7 @@ export function EventForm({
     try {
       if (eventId && endUserAccountId && calendarId) {
         await updateEventMutation.mutateAsync({
-          id:
-            updateSeries && masterEventData && masterEventData.id
-              ? masterEventData.id
-              : eventId,
+          id: values.id,
           endUserAccountId: endUserAccountId,
           calendarId: calendarId,
           title: values.title,
@@ -207,10 +209,10 @@ export function EventForm({
           description: values.description,
           showAs: values.showAs,
           isAllDay: values.isAllDay,
-          isRecurring: updateSeries
-            ? values.isRecurring
-            : eventData?.isRecurring,
-          recurrence: updateSeries ? values.recurrence : eventData?.recurrence,
+          ...((!eventId || updateSeries || !eventData?.recurringEventId) && {
+            isRecurring: values.isRecurring,
+            recurrence: values.recurrence,
+          }),
         });
         toast.success("Event updated successfully");
       } else {
@@ -328,7 +330,7 @@ export function EventForm({
                 </div>
               )}
 
-              {(!eventId || updateSeries) && (
+              {(!eventId || updateSeries || !eventData?.recurringEventId) && (
                 <>
                   <div className="flex items-center gap-2">
                     <Field type="checkbox" name="isAllDay" />

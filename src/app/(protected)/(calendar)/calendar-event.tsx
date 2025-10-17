@@ -110,7 +110,7 @@ export function CalendarEventComponent({
             </Button>
 
             <DialogClose asChild>
-              <Button variant="outline">Close</Button>
+              <Button variant="outline">Cancel</Button>
             </DialogClose>
           </div>
         </DialogContent>
