@@ -13,11 +13,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
-import { formatLocalDate, formatOneCalDate, getRRuleText } from "@/lib/utils";
+import {
+  formatLocalDate,
+  formatLocalDateTime,
+  formatOneCalDate,
+  getRRuleText,
+} from "@/lib/utils";
 import * as Yup from "yup";
 import { LoaderIcon, Trash2Icon } from "lucide-react";
 import { RecurrencePopover } from "./recurrence-popover";
-import { addHours } from "date-fns";
+import { addDays, addHours } from "date-fns";
 import type { CalendarEvent } from "@/app/(protected)/(calendar)/types";
 
 export type EventFormProps = {
@@ -127,8 +132,8 @@ export function EventForm({
       return {
         title: "",
         calendarId: calendarId ?? calendars[0]?.id ?? "",
-        start: formatLocalDate(initialStart ?? new Date()),
-        end: formatLocalDate(initialEnd ?? addHours(new Date(), 1)),
+        start: formatLocalDateTime(initialStart ?? new Date()),
+        end: formatLocalDateTime(initialEnd ?? addHours(new Date(), 1)),
         isAllDay: false,
         description: "",
         transparency: "transparent",
@@ -137,20 +142,24 @@ export function EventForm({
         recurrence: [] as string[],
       };
 
+    const start = baseEvent?.start?.dateTime
+      ? new Date(baseEvent.start.dateTime)
+      : new Date();
+
+    const end = baseEvent?.end?.dateTime
+      ? new Date(baseEvent.end.dateTime)
+      : addHours(new Date(), 1);
+
     return {
       id: baseEvent?.id ?? "",
       title: baseEvent.title ?? "",
       calendarId: calendarId ?? "",
-      start: formatLocalDate(
-        baseEvent?.start?.dateTime
-          ? new Date(baseEvent.start.dateTime)
-          : new Date(),
-      ),
-      end: formatLocalDate(
-        baseEvent?.end?.dateTime
-          ? new Date(baseEvent.end.dateTime)
-          : addHours(new Date(), 1),
-      ),
+      start: baseEvent?.isAllDay
+        ? formatLocalDate(start)
+        : formatLocalDateTime(start),
+      end: baseEvent?.isAllDay
+        ? formatLocalDate(addDays(end, -1))
+        : formatLocalDateTime(end),
       isAllDay: baseEvent.isAllDay ?? false,
       description: baseEvent.description ?? "",
       transparency: baseEvent.transparency ?? "transparent",
@@ -207,7 +216,7 @@ export function EventForm({
           organizer:
             values.attendees.length > 0 ? values.attendees[0] : undefined,
           description: values.description,
-          showAs: values.showAs,
+          transparency: values.transparency,
           isAllDay: values.isAllDay,
           ...((!eventId || updateSeries || !eventData?.recurringEventId) && {
             isRecurring: values.isRecurring,
@@ -226,7 +235,7 @@ export function EventForm({
           organizer:
             values.attendees.length > 0 ? values.attendees[0] : undefined,
           description: values.description,
-          showAs: values.showAs,
+          transparency: values.transparency,
           isAllDay: values.isAllDay,
           isRecurring: values.isRecurring,
           recurrence: values.recurrence,
@@ -333,7 +342,31 @@ export function EventForm({
               {(!eventId || updateSeries || !eventData?.recurringEventId) && (
                 <>
                   <div className="flex items-center gap-2">
-                    <Field type="checkbox" name="isAllDay" />
+                    <Field
+                      type="checkbox"
+                      name="isAllDay"
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        const checked = e.target.checked;
+                        setFieldValue("isAllDay", checked);
+                        const startDate = values.start
+                          ? new Date(values.start)
+                          : new Date();
+                        const endDate = values.end
+                          ? new Date(values.end)
+                          : addHours(new Date(), 1);
+
+                        if (checked) {
+                          setFieldValue("start", formatLocalDate(startDate));
+                          setFieldValue("end", formatLocalDate(endDate));
+                        } else {
+                          setFieldValue(
+                            "start",
+                            formatLocalDateTime(startDate),
+                          );
+                          setFieldValue("end", formatLocalDateTime(endDate));
+                        }
+                      }}
+                    />
                     <span>All day</span>
                   </div>
 
@@ -354,6 +387,11 @@ export function EventForm({
 
                     {values.isRecurring && (
                       <RecurrencePopover
+                        rruleString={
+                          values.recurrence && values.recurrence?.length > 0
+                            ? values.recurrence[0]
+                            : undefined
+                        }
                         startDate={values.start}
                         open={recurrencePopoverOpen}
                         onOpenChange={setRecurrencePopoverOpen}

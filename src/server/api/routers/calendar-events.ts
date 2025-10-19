@@ -8,7 +8,6 @@ import {
   getCalendarEvent,
 } from "@/server/lib/onecal-unified/client";
 import type {
-  EventTransparency,
   PaginatedResponse,
   UnifiedEvent,
 } from "@/server/lib/onecal-unified/types";
@@ -141,10 +140,10 @@ export const calendarEventsRouter = createTRPCRouter({
           })
           .optional(),
         description: z.string().optional(),
-        showAs: z.string().optional(),
         isAllDay: z.boolean().optional(),
         isRecurring: z.boolean().optional(),
         recurrence: z.array(z.string()).optional().nullable(),
+        transparency: z.enum(["transparent", "opaque"]).optional()
       }),
     )
     .mutation(async ({ input }) => {
@@ -155,7 +154,7 @@ export const calendarEventsRouter = createTRPCRouter({
         attendees: input.attendees,
         organizer: input.organizer,
         description: input.description,
-        transparency: input.showAs as EventTransparency,
+        transparency: input.transparency,
         isAllDay: input.isAllDay,
         isRecurring: input.isRecurring,
         recurrence: input.recurrence,
@@ -192,10 +191,10 @@ export const calendarEventsRouter = createTRPCRouter({
           })
           .optional(),
         description: z.string().optional(),
-        showAs: z.string().optional(),
         isAllDay: z.boolean().optional(),
         isRecurring: z.boolean().optional(),
         recurrence: z.array(z.string()).optional().nullable(),
+        transparency: z.enum(["transparent", "opaque"]).optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -211,7 +210,7 @@ export const calendarEventsRouter = createTRPCRouter({
           attendees: input.attendees,
           organizer: input.organizer,
           description: input.description,
-          transparency: input.showAs as EventTransparency,
+          transparency: input.transparency,
           isAllDay: input.isAllDay,
           isRecurring: input.isRecurring,
           recurrence: input.recurrence,
