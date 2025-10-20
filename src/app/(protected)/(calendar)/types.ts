@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
-export type CalendarEvent = {
+export type CalendarSimpleEvent = {
   id?: string;
   title?: string | ReactNode | null;
   start?: Date;
   end?: Date;
-  allDay?: boolean;
+  isAllDay?: boolean;
   colorId?: string;
   customColor?: string;
   calendarColor?: string;
@@ -13,6 +13,27 @@ export type CalendarEvent = {
   calendarUnifiedId?: string;
   calendarId?: string;
   resource?: { id: string };
+  recurringEventId?: string;
+};
+
+export type CalendarEvent = {
+  id?: string;
+  title?: string;
+  start?: string;
+  end?: string;
+  isAllDay?: boolean;
+  isRecurring?: boolean;
+  recurrence?: string[] | null;
+  attendees?: { email?: string; name?: string }[];
+  organizer?: { email?: string; name?: string };
+  description?: string;
+  transparency?: string;
+  colorId?: string;
+  customColor?: string;
+  calendarColor?: string;
+  calendarUnifiedAccountId?: string;
+  calendarUnifiedId?: string;
+  calendarId?: string;
 };
 
 export const EVENT_COLOR_MAP: Record<string, string> = {

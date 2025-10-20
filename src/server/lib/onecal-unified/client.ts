@@ -51,6 +51,17 @@ export async function getCalendarEvents(
   return response.json();
 }
 
+export async function getCalendarEvent(
+  endUserAccountId: string,
+  calendarId: string,
+  eventId: string,
+) {
+  const response = await onecalUnifiedApi.get<UniversalEvent>(
+    `events/${endUserAccountId}/${calendarId}/${eventId}`,
+  );
+  return response.json();
+}
+
 export async function createCalendarEvent(
   endUserAccountId: string,
   calendarId: string,
@@ -59,6 +70,20 @@ export async function createCalendarEvent(
   console.log("Creating event:", event, endUserAccountId, calendarId);
   const response = await onecalUnifiedApi.post<UniversalEvent>(
     `events/${endUserAccountId}/${calendarId}`,
+    {json: event},
+  );
+  return response.json();
+}
+
+export async function editCalendarEvent(
+  endUserAccountId: string,
+  calendarId: string,
+  eventId: string,
+  event: Partial<UniversalEvent>,
+) {
+  console.log("Updating event:", event, endUserAccountId, calendarId, eventId);
+  const response = await onecalUnifiedApi.put<UniversalEvent>(
+    `events/${endUserAccountId}/${calendarId}/${eventId}`,
     {json: event},
   );
   return response.json();

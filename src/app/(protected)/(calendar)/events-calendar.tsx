@@ -20,7 +20,7 @@ import { api } from "@/trpc/react";
 import { useCallback, useMemo, useState } from "react";
 import {
   EVENT_COLOR_MAP,
-  type CalendarEvent,
+  type CalendarSimpleEvent,
 } from "@/app/(protected)/(calendar)/types";
 import { CalendarEventComponent } from "./calendar-event";
 import {
@@ -31,7 +31,7 @@ import {
   SheetTitle,
   SheetClose,
 } from "@/components/ui/sheet";
-import { CreateEventForm } from "./create-event-form";
+import { EventForm } from "./event-form";
 
 const locales = {
   "en-US": enUS,
@@ -48,7 +48,7 @@ const initialRange = [startOfWeek(new Date()), endOfWeek(new Date())] as const;
 
 type DateRange = typeof initialRange;
 
-const components: Components<CalendarEvent> = {
+const components: Components<CalendarSimpleEvent> = {
   event: (props) => <div>{props.event.title}</div>,
 };
 
@@ -61,7 +61,7 @@ export default function CalendarPage() {
   const [createEventEnd, setCreateEventEnd] = useState<Date | null>(
     addHours(new Date(), 1),
   );
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
+  const [selectedEvent, setSelectedEvent] = useState<CalendarSimpleEvent | null>(
     null,
   );
 
@@ -78,9 +78,8 @@ export default function CalendarPage() {
       },
     );
 
-  const events: CalendarEvent[] = useMemo(() => {
+  const events: CalendarSimpleEvent[] = useMemo(() => {
     if (!calendarEvents) return [];
-    debugger;
     return calendarEvents.map((event: any) => ({
       id: event.id,
       title: event.title,
@@ -96,11 +95,12 @@ export default function CalendarPage() {
       resource: {
         id: event.calendarId,
       },
+      recurringEventId: event.recurringEventId
     }));
   }, [calendarEvents]);
 
-  const eventPropGetter = useCallback((event: CalendarEvent) => {
-    const getEventColor = (event: CalendarEvent) => {
+  const eventPropGetter = useCallback((event: CalendarSimpleEvent) => {
+    const getEventColor = (event: CalendarSimpleEvent) => {
       if (event.customColor) return event.customColor;
       if (event.colorId && EVENT_COLOR_MAP[event.colorId])
         return EVENT_COLOR_MAP[event.colorId];
@@ -127,9 +127,9 @@ export default function CalendarPage() {
           className="fixed top-0 right-0 h-full w-full overflow-y-auto sm:w-[600px] sm:max-w-3xl"
         >
           <SheetHeader>
-            <SheetTitle>Create Event</SheetTitle>
+            <SheetTitle>Create New Event</SheetTitle>
           </SheetHeader>
-          <CreateEventForm
+          <EventForm
             calendars={(calendarAccounts || []).flatMap((acc) =>
               acc.calendars.map((cal) => ({
                 ...cal,

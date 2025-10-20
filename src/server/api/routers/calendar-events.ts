@@ -4,9 +4,10 @@ import {
   getCalendarEvents,
   createCalendarEvent,
   deleteCalendarEvent,
+  editCalendarEvent,
+  getCalendarEvent,
 } from "@/server/lib/onecal-unified/client";
 import type {
-  EventTransparency,
   PaginatedResponse,
   UnifiedEvent,
 } from "@/server/lib/onecal-unified/types";
@@ -34,7 +35,12 @@ export const calendarEventsRouter = createTRPCRouter({
       > = [];
 
       const calendarEvents: Array<
-        UnifiedEvent & { calendarId: string; calendarColor: string; calendarUnifiedId: string; calendarUnifiedAccountId: string; }
+        UnifiedEvent & {
+          calendarId: string;
+          calendarColor: string;
+          calendarUnifiedId: string;
+          calendarUnifiedAccountId: string;
+        }
       > = (
         await Promise.all(
           visibleCalendars.map(async (calendar) => {
@@ -90,6 +96,21 @@ export const calendarEventsRouter = createTRPCRouter({
 
       return events;
     }),
+  getCalendarEvent: publicProcedure
+    .input(
+      z.object({
+        endUserAccountId: z.string(),
+        calendarId: z.string(),
+        eventId: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return await getCalendarEvent(
+        input.endUserAccountId,
+        input.calendarId,
+        input.eventId,
+      );
+    }),
   createCalendarEvent: publicProcedure
     .input(
       z.object({
@@ -119,10 +140,10 @@ export const calendarEventsRouter = createTRPCRouter({
           })
           .optional(),
         description: z.string().optional(),
-        showAs: z.string().optional(),
         isAllDay: z.boolean().optional(),
         isRecurring: z.boolean().optional(),
         recurrence: z.array(z.string()).optional().nullable(),
+        transparency: z.enum(["transparent", "opaque"]).optional()
       }),
     )
     .mutation(async ({ input }) => {
@@ -133,11 +154,68 @@ export const calendarEventsRouter = createTRPCRouter({
         attendees: input.attendees,
         organizer: input.organizer,
         description: input.description,
-        transparency: input.showAs as EventTransparency,
+        transparency: input.transparency,
         isAllDay: input.isAllDay,
         isRecurring: input.isRecurring,
-        recurrence: input.recurrence
+        recurrence: input.recurrence,
       });
+      return { success: true };
+    }),
+  editCalendarEvent: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        endUserAccountId: z.string(),
+        calendarId: z.string(),
+        title: z.string(),
+        start: z.object({
+          dateTime: z.string(),
+          timeZone: z.string(),
+        }),
+        end: z.object({
+          dateTime: z.string(),
+          timeZone: z.string(),
+        }),
+        attendees: z
+          .array(
+            z.object({
+              email: z.string(),
+              name: z.string().optional(),
+            }),
+          )
+          .optional(),
+        organizer: z
+          .object({
+            email: z.string(),
+            name: z.string().optional(),
+          })
+          .optional(),
+        description: z.string().optional(),
+        isAllDay: z.boolean().optional(),
+        isRecurring: z.boolean().optional(),
+        recurrence: z.array(z.string()).optional().nullable(),
+        transparency: z.enum(["transparent", "opaque"]).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      await editCalendarEvent(
+        input.endUserAccountId,
+        input.calendarId,
+        input.id,
+        {
+          id: input.id,
+          title: input.title,
+          start: input.start,
+          end: input.end,
+          attendees: input.attendees,
+          organizer: input.organizer,
+          description: input.description,
+          transparency: input.transparency,
+          isAllDay: input.isAllDay,
+          isRecurring: input.isRecurring,
+          recurrence: input.recurrence,
+        },
+      );
       return { success: true };
     }),
   deleteCalendarEvent: publicProcedure
