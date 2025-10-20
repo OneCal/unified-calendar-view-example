@@ -52,8 +52,10 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { EventForm } from "@/app/(protected)/(calendar)/event-form";
+import { useState } from "react";
 
 export function CalendarsSidebar({ userId }: { userId: string }) {
+  const [createEventOpen, setCreateEventOpen] = useState(false);
   const { data: calendarAccounts } = api.calendarAccounts.getAll.useQuery();
   const utils = api.useUtils();
 
@@ -255,7 +257,7 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
                 </DropdownMenu>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <Sheet>
+                <Sheet open={createEventOpen} onOpenChange={setCreateEventOpen}>
                   <SheetTrigger asChild>
                     <SidebarMenuButton className="w-full">
                       <PlusIcon />
@@ -276,6 +278,7 @@ export function CalendarsSidebar({ userId }: { userId: string }) {
                           },
                         })),
                       )}
+                      onSuccess={() => setCreateEventOpen(false)}
                     />
                   </SheetContent>
                 </Sheet>
