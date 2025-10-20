@@ -162,7 +162,7 @@ export function EventForm({
         : formatLocalDateTime(end),
       isAllDay: baseEvent.isAllDay ?? false,
       description: baseEvent.description ?? "",
-      transparency: baseEvent.transparency ?? "transparent",
+      transparency: baseEvent.transparency ?? "opaque",
       attendees: baseEvent.organizer
         ? [
             baseEvent.organizer,
