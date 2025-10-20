@@ -203,7 +203,6 @@ export const calendarEventsRouter = createTRPCRouter({
         input.calendarId,
         input.id,
         {
-          id: input.id,
           title: input.title,
           start: input.start,
           end: input.end,
