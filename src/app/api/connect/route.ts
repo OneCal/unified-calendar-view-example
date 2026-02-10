@@ -1,10 +1,8 @@
 import { env } from "@/env";
 import { stateFromB64 } from "@/lib/utils";
 import { db } from "@/server/db";
-import {
-  getCalendarsForEndUserAccount,
-  getEndUserAccountById,
-} from "@/server/lib/onecal-unified/client";
+import { onecalClient } from "@/server/lib/onecal-unified/client";
+import type { CalendarAccountProvider, CalendarAccountStatus } from "@prisma/client";
 
 import type { NextRequest } from "next/server";
 
@@ -22,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { userId } = stateFromB64(state);
-  const endUserAccount = await getEndUserAccountById(endUserAccountId);
+  const endUserAccount = await onecalClient.endUserAccounts.get(endUserAccountId);
 
   const user = await db.user.findUnique({
     where: {
@@ -39,19 +37,19 @@ export async function GET(request: NextRequest) {
       email_provider_userId: {
         email: endUserAccount.email,
         userId,
-        provider: endUserAccount.providerType,
+        provider: endUserAccount.providerType as CalendarAccountProvider,
       },
     },
     update: {
-      status: endUserAccount.status,
+      status: endUserAccount.status as CalendarAccountStatus,
       unifiedAccountId: endUserAccount.id,
     },
     create: {
       email: endUserAccount.email,
-      provider: endUserAccount.providerType,
+      provider: endUserAccount.providerType as CalendarAccountProvider,
       userId,
       unifiedAccountId: endUserAccount.id,
-      status: endUserAccount.status,
+      status: endUserAccount.status as CalendarAccountStatus,
     },
     include: {
       calendars: true,
@@ -69,7 +67,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const calendars = await getCalendarsForEndUserAccount(endUserAccount.id);
+  const calendars = await onecalClient.calendars.list(endUserAccount.id);
 
   for (const calendar of calendars.data) {
     await db.calendar.upsert({

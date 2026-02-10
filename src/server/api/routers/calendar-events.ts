@@ -1,17 +1,11 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
+import { onecalClient } from "@/server/lib/onecal-unified/client";
 import {
-  getCalendarEvents,
-  createCalendarEvent,
-  deleteCalendarEvent,
-  editCalendarEvent,
-  getCalendarEvent,
-} from "@/server/lib/onecal-unified/client";
-import type {
-  PaginatedResponse,
-  UnifiedEvent,
-} from "@/server/lib/onecal-unified/types";
-import { HTTPError } from "ky";
+  APIRequestError,
+  type Event,
+  type PaginatedResponse,
+} from "@onecal/unified-calendar-api-node-sdk";
 import { CalendarAccountStatus } from "@prisma/client";
 
 export const calendarEventsRouter = createTRPCRouter({
@@ -31,11 +25,11 @@ export const calendarEventsRouter = createTRPCRouter({
       });
 
       let events: Array<
-        UnifiedEvent & { calendarId: string; calendarColor: string }
+        Event & { calendarId: string; calendarColor: string }
       > = [];
 
       const calendarEvents: Array<
-        UnifiedEvent & {
+        Event & {
           calendarId: string;
           calendarColor: string;
           calendarUnifiedId: string;
@@ -44,40 +38,41 @@ export const calendarEventsRouter = createTRPCRouter({
       > = (
         await Promise.all(
           visibleCalendars.map(async (calendar) => {
-            const events = await getCalendarEvents(
-              calendar.calendarAccount.unifiedAccountId,
-              calendar.unifiedCalendarId,
-              {
-                startDateTime: input.startDate.toISOString(),
-                endDateTime: input.endDate.toISOString(),
-                expandRecurrences: true,
-              },
-            ).catch(async (err) => {
-              if (err instanceof HTTPError) {
-                const errorJson = await err.response.json();
-                if (errorJson.error === "InvalidRefreshToken") {
-                  await ctx.db.calendarAccount.update({
-                    where: { id: calendar.calendarAccount.id },
-                    data: {
-                      status: CalendarAccountStatus.EXPIRED,
-                    },
-                  });
-                } else {
-                  console.error(
-                    `Failed to fetch calendar events for calendar ${calendar.id}. Message: ${errorJson.message}`,
-                  );
+            const events = await onecalClient.events
+              .list(
+                calendar.calendarAccount.unifiedAccountId,
+                calendar.unifiedCalendarId,
+                {
+                  startDateTime: input.startDate.toISOString(),
+                  endDateTime: input.endDate.toISOString(),
+                  expandRecurrences: true,
+                },
+              )
+              .catch(async (err) => {
+                if (err instanceof APIRequestError) {
+                  if (err.code === "InvalidRefreshToken") {
+                    await ctx.db.calendarAccount.update({
+                      where: { id: calendar.calendarAccount.id },
+                      data: {
+                        status: CalendarAccountStatus.EXPIRED,
+                      },
+                    });
+                  } else {
+                    console.error(
+                      `Failed to fetch calendar events for calendar ${calendar.id}. Message: ${err.message}`,
+                    );
+                  }
                 }
-              }
 
-              return {
-                data: [] as UnifiedEvent[],
-              } as PaginatedResponse<UnifiedEvent>;
-            });
+                return {
+                  data: [] as Event[],
+                } as PaginatedResponse<Event>;
+              });
 
             return events.data.map((event) => ({
               ...event,
               calendarId: calendar.id,
-              calendarColor: calendar.color, // Add calendar color for frontend use
+              calendarColor: calendar.color ?? "", // Add calendar color for frontend use
               calendarUnifiedId: calendar.unifiedCalendarId,
               calendarUnifiedAccountId:
                 calendar.calendarAccount.unifiedAccountId,
@@ -105,7 +100,7 @@ export const calendarEventsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      return await getCalendarEvent(
+      return await onecalClient.events.get(
         input.endUserAccountId,
         input.calendarId,
         input.eventId,
@@ -147,7 +142,7 @@ export const calendarEventsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      await createCalendarEvent(input.endUserAccountId, input.calendarId, {
+      await onecalClient.events.create(input.endUserAccountId, input.calendarId, {
         title: input.title,
         start: input.start,
         end: input.end,
@@ -157,7 +152,7 @@ export const calendarEventsRouter = createTRPCRouter({
         transparency: input.transparency,
         isAllDay: input.isAllDay,
         isRecurring: input.isRecurring,
-        recurrence: input.recurrence,
+        recurrence: input.recurrence ?? undefined,
       });
       return { success: true };
     }),
@@ -198,7 +193,7 @@ export const calendarEventsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      await editCalendarEvent(
+      await onecalClient.events.update(
         input.endUserAccountId,
         input.calendarId,
         input.id,
@@ -212,7 +207,7 @@ export const calendarEventsRouter = createTRPCRouter({
           transparency: input.transparency,
           isAllDay: input.isAllDay,
           isRecurring: input.isRecurring,
-          recurrence: input.recurrence,
+          recurrence: input.recurrence ?? undefined,
         },
       );
       return { success: true };
@@ -226,7 +221,7 @@ export const calendarEventsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      await deleteCalendarEvent(
+      await onecalClient.events.delete(
         input.endUserAccountId,
         input.calendarId,
         input.eventId,
